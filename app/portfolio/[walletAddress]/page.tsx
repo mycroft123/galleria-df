@@ -1,6 +1,5 @@
 export const runtime = 'edge';
-export const dynamic = 'force-dynamic';
-// Remove preferredRegion if you have it
+
 import React, { Suspense } from "react";
 import {
   NFTDetails,
