@@ -1,12 +1,12 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
     images: {
-        domains: ['bafybeiey74fhfsbksvnzlgdix4vilwcbuvs32oc2gdd4pksvrezhn7kw7e.ipfs.nftstorage.link'],
+        remotePatterns: [{
+            protocol: 'https',
+            hostname: 'bafybeiey74fhfsbksvnzlgdix4vilwcbuvs32oc2gdd4pksvrezhn7kw7e.ipfs.nftstorage.link'
+        }],
     },
-    experimental: {
-        runtime: 'edge',
-        serverActions: true,
-    }
+    // Remove experimental section as these are no longer needed
 };
 
 module.exports = nextConfig;
