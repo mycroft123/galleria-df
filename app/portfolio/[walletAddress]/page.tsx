@@ -1,4 +1,5 @@
 
+export const dynamic = 'force-dynamic';  // This tells Next.js this is a dynamic route
 
 import React, { Suspense } from "react";
 import {
