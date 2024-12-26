@@ -6,7 +6,16 @@ const nextConfig = {
             hostname: 'bafybeiey74fhfsbksvnzlgdix4vilwcbuvs32oc2gdd4pksvrezhn7kw7e.ipfs.nftstorage.link'
         }],
     },
-    // Remove experimental section as these are no longer needed
+    // Add this configuration
+    webpack: (config, { isServer }) => {
+        if (!isServer) {
+            config.resolve.fallback = {
+                ...config.resolve.fallback,
+                "async_hooks": false,
+            };
+        }
+        return config;
+    }
 };
 
 module.exports = nextConfig;
