@@ -1,6 +1,5 @@
 export const runtime = 'edge';
-export const dynamic = 'auto';  // Changed from force-dynamic
-export const fetchCache = 'auto';
+
 
 import React, { Suspense } from "react";
 import {
