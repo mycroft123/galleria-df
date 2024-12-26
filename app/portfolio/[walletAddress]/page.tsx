@@ -1,7 +1,8 @@
 export const runtime = 'edge';
 export const preferredRegion = 'auto';
-import React, { Suspense } from "react";
+export const dynamic = 'force-dynamic';
 
+import React, { Suspense } from "react";
 import {
   NFTDetails,
   TokenDetails,
@@ -19,9 +20,8 @@ interface PortfolioPageProps {
 }
 
 const PortfolioPage = async ({ searchParams, params }: PortfolioPageProps) => {
-  // Fetch both fungible and non-fungible token data
   const { fungibleTokens, nonFungibleTokens } = await getAllAssets(
-    params.walletAddress,
+    params.walletAddress
   );
 
   return (
@@ -40,7 +40,7 @@ const PortfolioPage = async ({ searchParams, params }: PortfolioPageProps) => {
                   <div className="h-4/5 w-10/12 sm:w-2/3">
                     <TokenDetails
                       tokenData={fungibleTokens.filter(
-                        (item) => item.id === searchParams.tokenDetails,
+                        (item) => item.id === searchParams.tokenDetails
                       )}
                       searchParams={searchParams}
                       walletAddress={params.walletAddress}
@@ -57,7 +57,7 @@ const PortfolioPage = async ({ searchParams, params }: PortfolioPageProps) => {
                   <div className="h-4/5 w-10/12 sm:w-2/3">
                     <NFTDetails
                       nftData={nonFungibleTokens.filter(
-                        (item) => item.id === searchParams.details,
+                        (item) => item.id === searchParams.details
                       )}
                       searchParams={"view=" + searchParams.view}
                       walletAddress={params.walletAddress}
@@ -78,17 +78,11 @@ const PortfolioPage = async ({ searchParams, params }: PortfolioPageProps) => {
                   : ""
               }`}
             >
-              <Suspense
-                fallback={<div>Loading...</div>}
-                key={searchParams.view}
-              >
+              <Suspense fallback={<div>Loading...</div>} key={searchParams.view}>
                 <div>
                   {searchParams.view === "tokens" && (
                     <>
-                      {/* Token Metrics */}
                       <TokenMetrics fungibleTokens={fungibleTokens} />
-
-                      {/* Tokens List */}
                       <TokensList
                         tokens={fungibleTokens}
                         searchParams={searchParams.toString()}
@@ -98,10 +92,7 @@ const PortfolioPage = async ({ searchParams, params }: PortfolioPageProps) => {
                   )}
                   {searchParams.view === "nfts" && (
                     <>
-                      {/* NFTs Metrics */}
                       <NFTMetrics nonFungibleTokens={nonFungibleTokens} />
-
-                      {/* NFTs List */}
                       <NFTList
                         tokens={nonFungibleTokens}
                         searchParams={searchParams.toString()}
@@ -120,6 +111,7 @@ const PortfolioPage = async ({ searchParams, params }: PortfolioPageProps) => {
 };
 
 const getAllAssets = async (walletAddress: string) => {
+  // Using Edge-compatible environment variable access
   const url = process.env.NEXT_PUBLIC_HELIUS_RPC_URL;
 
   if (!url) {
@@ -127,7 +119,7 @@ const getAllAssets = async (walletAddress: string) => {
   }
 
   const response = await fetch(url, {
-    next: { revalidate: 5 },
+    cache: 'no-store',  // Edge-compatible caching strategy
     method: "POST",
     headers: {
       "Content-Type": "application/json",
@@ -138,7 +130,7 @@ const getAllAssets = async (walletAddress: string) => {
       method: "searchAssets",
       params: {
         ownerAddress: walletAddress,
-        tokenType: "all", // Changed to "all" to fetch both types
+        tokenType: "all",
         displayOptions: {
           showNativeBalance: true,
           showInscription: true,
@@ -158,9 +150,10 @@ const getAllAssets = async (walletAddress: string) => {
   // Split the items into fungible and non-fungible tokens
   let fungibleTokens: FungibleToken[] = items.filter(
     (item): item is FungibleToken =>
-      item.interface === "FungibleToken" || item.interface === "FungibleAsset",
+      item.interface === "FungibleToken" || item.interface === "FungibleAsset"
   );
-  // Hardcoding the image for USDC
+
+  // Hardcoding the image for USDC and other tokens
   fungibleTokens = fungibleTokens.map((item) => {
     if (item.id === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v") {
       return {
@@ -170,7 +163,7 @@ const getAllAssets = async (walletAddress: string) => {
           files: [
             {
               uri: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png",
-              cdn_uri: "", // Assuming this is correct
+              cdn_uri: "",
               mime: "image/png",
             },
           ],
@@ -188,7 +181,7 @@ const getAllAssets = async (walletAddress: string) => {
           files: [
             {
               uri: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1/logo.png",
-              cdn_uri: "", // Assuming this is correct
+              cdn_uri: "",
               mime: "image/png",
             },
           ],
@@ -201,26 +194,26 @@ const getAllAssets = async (walletAddress: string) => {
     }
     return item;
   });
+
   const nonFungibleTokens: NonFungibleToken[] = items.filter(
     (item): item is NonFungibleToken =>
-      !["FungibleToken", "FungibleAsset"].includes(item.interface),
+      !["FungibleToken", "FungibleAsset"].includes(item.interface)
   );
 
   // Calculate SOL balance from lamports
   const solBalance = data.result.nativeBalance.lamports;
-  //console.log(data.result);
 
   // Create SOL token object
   const solToken = {
     interface: "FungibleAsset",
-    id: "So11111111111111111111111111111111111111112", // Mint address as ID
+    id: "So11111111111111111111111111111111111111112",
     content: {
       $schema: "https://schema.metaplex.com/nft1.0.json",
       json_uri: "",
       files: [
         {
           uri: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
-          cdn_uri: "", // Assuming this is correct
+          cdn_uri: "",
           mime: "image/png",
         },
       ],
@@ -235,7 +228,7 @@ const getAllAssets = async (walletAddress: string) => {
           "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
       },
     },
-    authorities: [], // Assuming empty for SOL
+    authorities: [],
     compression: {
       eligible: false,
       compressed: false,
@@ -246,16 +239,16 @@ const getAllAssets = async (walletAddress: string) => {
       seq: 0,
       leaf_id: 0,
     },
-    grouping: [], // Assuming empty for SOL
+    grouping: [],
     royalty: {
-      royalty_model: "", // Fill as needed
+      royalty_model: "",
       target: null,
       percent: 0,
       basis_points: 0,
       primary_sale_happened: false,
       locked: false,
     },
-    creators: [], // Assuming empty for SOL
+    creators: [],
     ownership: {
       frozen: false,
       delegated: false,
@@ -263,30 +256,30 @@ const getAllAssets = async (walletAddress: string) => {
       ownership_model: "token",
       owner: nonFungibleTokens[0]?.ownership.owner,
     },
-    supply: null, // Assuming null for SOL
-    mutable: true, // Assuming true for SOL
-    burnt: false, // Assuming false for SOL
-
+    supply: null,
+    mutable: true,
+    burnt: false,
     token_info: {
       symbol: "SOL",
       balance: solBalance,
-      supply: 0, // Assuming null for SOL
+      supply: 0,
       decimals: 9,
-      token_program: "", // Fill as needed
-      associated_token_address: "", // Fill as needed
+      token_program: "",
+      associated_token_address: "",
       price_info: {
-        price_per_token: data.result.nativeBalance.price_per_sol, // Fill with actual price if available
-        total_price: data.result.nativeBalance.total_price, // Fill with actual total price if available
-        currency: "", // Fill as needed
+        price_per_token: data.result.nativeBalance.price_per_sol,
+        total_price: data.result.nativeBalance.total_price,
+        currency: "",
       },
     },
   };
 
-  // Add SOL token to the tokens array
+  // Add SOL token to the tokens array if balance exists
   if (solBalance > 0) {
     fungibleTokens.push(solToken);
   }
 
   return { fungibleTokens, nonFungibleTokens };
 };
+
 export default PortfolioPage;
