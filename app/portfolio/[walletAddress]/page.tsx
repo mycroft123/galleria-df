@@ -1,4 +1,5 @@
 export const runtime = 'edge';
+export const preferredRegion = 'auto';
 import React, { Suspense } from "react";
 
 import {
