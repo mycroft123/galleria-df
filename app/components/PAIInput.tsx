@@ -101,7 +101,13 @@ const PAIInput: React.FC = () => {
         signal,
       });
   
-      const response = await Promise.race([fetchPromise, timeoutPromise]);
+      const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
+      }
+  
       return response;
     } catch (error: unknown) {
       if (error instanceof Error) {
