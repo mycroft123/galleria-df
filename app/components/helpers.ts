@@ -1,3 +1,6 @@
+import { ParsedResponse } from './types';
+
+
 export const generateDisplayText = (parsedContent: ParsedResponse): string => {
     let displayText = "";
   
