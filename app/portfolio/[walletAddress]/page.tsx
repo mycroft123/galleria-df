@@ -17,7 +17,14 @@ interface PortfolioPageProps {
   params: { walletAddress: string };
 }
 
-// Add Loading component
+interface BaseItem {
+  interface: string;
+  id: string;
+  content?: any;
+  ownership?: any;
+  token_info?: any;
+}
+
 const LoadingSpinner = () => (
   <div className="flex items-center justify-center min-h-[200px]">
     <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
@@ -120,7 +127,6 @@ const PortfolioPage = async ({ searchParams, params }: PortfolioPageProps) => {
 };
 
 const getAllAssets = async (walletAddress: string) => {
-  // Validate wallet address
   if (!walletAddress || walletAddress.length !== 44) {
     throw new Error("Invalid wallet address format");
   }
@@ -170,11 +176,11 @@ const getAllAssets = async (walletAddress: string) => {
       throw new Error(`Invalid response structure: ${JSON.stringify(data)}`);
     }
 
-    const items = data.result.items;
+    const items: BaseItem[] = data.result.items;
 
-    // Split tokens
+    // Split tokens with proper typing
     let fungibleTokens: FungibleToken[] = items.filter(
-      (item): item is FungibleToken =>
+      (item: BaseItem): item is FungibleToken =>
         item.interface === "FungibleToken" || item.interface === "FungibleAsset"
     );
 
@@ -202,7 +208,7 @@ const getAllAssets = async (walletAddress: string) => {
     });
 
     const nonFungibleTokens: NonFungibleToken[] = items.filter(
-      (item): item is NonFungibleToken =>
+      (item: BaseItem): item is NonFungibleToken =>
         !["FungibleToken", "FungibleAsset"].includes(item.interface)
     );
 
