@@ -91,23 +91,26 @@ const PAIInput: React.FC = () => {
         controller.abort();
         reject(new Error('Request timed out'));
       }, timeout);
-
+  
       signal.addEventListener('abort', () => clearTimeout(timeoutId));
     });
-
+  
     try {
       const fetchPromise = fetch(url, {
         ...options,
         signal,
       });
-
+  
       const response = await Promise.race([fetchPromise, timeoutPromise]);
       return response;
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        throw new Error('Request timed out');
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new Error('Request timed out');
+        }
+        throw error;
       }
-      throw error;
+      throw new Error('An unknown error occurred');
     }
   };
 
