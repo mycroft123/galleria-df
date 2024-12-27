@@ -94,7 +94,7 @@ const WalletInput = ({ source }: { source: string }) => {
         router.push(`/portfolio/${DEFAULT_WALLET}?view=${currentView}`);
       }
     }
-  }, []);
+  }, [router, searchParams]) // add missing dependencies
 
   return (
     <form
