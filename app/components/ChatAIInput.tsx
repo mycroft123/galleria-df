@@ -403,12 +403,16 @@ const ChatAIInput: React.FC = () => {
     setLoading(true);
     setError("");
 
-    const newMessages = [...chatMessages, { 
-      role: 'user', 
-      content: chatInput, 
-      timestamp: Date.now() 
-    }];
-    setChatMessages(newMessages);
+// For user messages
+const newMessages: Message[] = [...chatMessages, { 
+  role: 'user',
+  content: chatInput,  // chatInput is already a string
+  timestamp: Date.now() 
+}];
+setChatMessages(newMessages);
+
+
+
 
     try {
       const requestBody = {
@@ -485,12 +489,13 @@ const ChatAIInput: React.FC = () => {
         const displayText = generateDisplayText(parsedContent);
         const messageIndex = newMessages.length;
 
-        const newMessage: Message = {
-          role: 'assistant',
-          content: displayText,
-          timestamp: Date.now(),
-          citations: data.citations || []
-        };
+       // For assistant messages
+const newMessage: Message = {
+  role: 'assistant',
+  content: displayText,  // displayText is a string generated from ParsedResponse
+  timestamp: Date.now(),
+  citations: data.citations || []
+};
 
         // Automatically mint NFTs for citations
         if (data.citations && data.citations.length > 0) {
