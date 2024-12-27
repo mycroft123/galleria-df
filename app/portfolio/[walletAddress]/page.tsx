@@ -1,4 +1,3 @@
-
 export const dynamic = 'force-dynamic';  // This tells Next.js this is a dynamic route
 
 import React, { Suspense } from "react";
@@ -18,10 +17,25 @@ interface PortfolioPageProps {
   params: { walletAddress: string };
 }
 
+// Add Loading component
+const LoadingSpinner = () => (
+  <div className="flex items-center justify-center min-h-[200px]">
+    <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-gray-900" />
+  </div>
+);
+
 const PortfolioPage = async ({ searchParams, params }: PortfolioPageProps) => {
-  const { fungibleTokens, nonFungibleTokens } = await getAllAssets(
-    params.walletAddress
-  );
+  let assets;
+  try {
+    assets = await getAllAssets(params.walletAddress);
+  } catch (error) {
+    console.error("Error loading portfolio:", error);
+    throw new Error(
+      `Failed to load portfolio data: ${error instanceof Error ? error.message : 'Unknown error'}`
+    );
+  }
+
+  const { fungibleTokens, nonFungibleTokens } = assets;
 
   return (
     <div className="h-screen bg-radial-gradient">
@@ -68,16 +82,12 @@ const PortfolioPage = async ({ searchParams, params }: PortfolioPageProps) => {
 
             <div
               className={`${
-                searchParams.details
-                  ? "flex h-screen flex-col overflow-hidden"
-                  : ""
-              }${
-                searchParams.tokenDetails
+                searchParams.details || searchParams.tokenDetails
                   ? "flex h-screen flex-col overflow-hidden"
                   : ""
               }`}
             >
-              <Suspense fallback={<div>Loading...</div>} key={searchParams.view}>
+              <Suspense fallback={<LoadingSpinner />} key={searchParams.view}>
                 <div>
                   {searchParams.view === "tokens" && (
                     <>
@@ -110,175 +120,175 @@ const PortfolioPage = async ({ searchParams, params }: PortfolioPageProps) => {
 };
 
 const getAllAssets = async (walletAddress: string) => {
-  // Using Edge-compatible environment variable access
-  const url = process.env.NEXT_PUBLIC_HELIUS_RPC_URL;
+  // Validate wallet address
+  if (!walletAddress || walletAddress.length !== 44) {
+    throw new Error("Invalid wallet address format");
+  }
 
+  const url = process.env.NEXT_PUBLIC_HELIUS_RPC_URL;
   if (!url) {
     throw new Error("NEXT_PUBLIC_HELIUS_RPC_URL is not set");
   }
 
-  const response = await fetch(url, {
-    cache: 'no-store',  // Edge-compatible caching strategy
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      jsonrpc: "2.0",
-      id: "my-id",
-      method: "searchAssets",
-      params: {
-        ownerAddress: walletAddress,
-        tokenType: "all",
-        displayOptions: {
-          showNativeBalance: true,
-          showInscription: true,
-          showCollectionMetadata: true,
-        },
+  try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+
+    const response = await fetch(url, {
+      cache: 'no-store',
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
       },
-    }),
-  });
-
-  if (!response.ok) {
-    throw new Error(`Failed to fetch data`);
-  }
-
-  const data = await response.json();
-  const items: (FungibleToken | NonFungibleToken)[] = data.result.items;
-
-  // Split the items into fungible and non-fungible tokens
-  let fungibleTokens: FungibleToken[] = items.filter(
-    (item): item is FungibleToken =>
-      item.interface === "FungibleToken" || item.interface === "FungibleAsset"
-  );
-
-  // Hardcoding the image for USDC and other tokens
-  fungibleTokens = fungibleTokens.map((item) => {
-    if (item.id === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v") {
-      return {
-        ...item,
-        content: {
-          ...item.content,
-          files: [
-            {
-              uri: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png",
-              cdn_uri: "",
-              mime: "image/png",
-            },
-          ],
-          links: {
-            image:
-              "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png",
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: "my-id",
+        method: "searchAssets",
+        params: {
+          ownerAddress: walletAddress,
+          tokenType: "all",
+          displayOptions: {
+            showNativeBalance: true,
+            showInscription: true,
+            showCollectionMetadata: true,
           },
         },
-      };
-    } else if (item.id === "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1") {
-      return {
-        ...item,
-        content: {
-          ...item.content,
-          files: [
-            {
-              uri: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1/logo.png",
-              cdn_uri: "",
-              mime: "image/png",
-            },
-          ],
-          links: {
-            image:
-              "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1/logo.png",
-          },
-        },
-      };
+      }),
+      signal: controller.signal,
+    });
+
+    clearTimeout(timeoutId);
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`Failed to fetch data: ${response.status} ${errorText}`);
     }
-    return item;
-  });
 
-  const nonFungibleTokens: NonFungibleToken[] = items.filter(
-    (item): item is NonFungibleToken =>
-      !["FungibleToken", "FungibleAsset"].includes(item.interface)
-  );
+    const data = await response.json();
+    
+    if (!data.result || !data.result.items) {
+      throw new Error(`Invalid response structure: ${JSON.stringify(data)}`);
+    }
 
-  // Calculate SOL balance from lamports
-  const solBalance = data.result.nativeBalance.lamports;
+    const items = data.result.items;
 
-  // Create SOL token object
-  const solToken = {
-    interface: "FungibleAsset",
-    id: "So11111111111111111111111111111111111111112",
-    content: {
-      $schema: "https://schema.metaplex.com/nft1.0.json",
-      json_uri: "",
-      files: [
-        {
-          uri: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
-          cdn_uri: "",
-          mime: "image/png",
+    // Split tokens
+    let fungibleTokens: FungibleToken[] = items.filter(
+      (item): item is FungibleToken =>
+        item.interface === "FungibleToken" || item.interface === "FungibleAsset"
+    );
+
+    // Handle token images
+    const tokenImages: Record<string, string> = {
+      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": 
+        "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png",
+      "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1":
+        "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1/logo.png",
+    };
+
+    fungibleTokens = fungibleTokens.map((item) => {
+      const imageUrl = tokenImages[item.id];
+      if (imageUrl) {
+        return {
+          ...item,
+          content: {
+            ...item.content,
+            files: [{ uri: imageUrl, cdn_uri: "", mime: "image/png" }],
+            links: { image: imageUrl },
+          },
+        };
+      }
+      return item;
+    });
+
+    const nonFungibleTokens: NonFungibleToken[] = items.filter(
+      (item): item is NonFungibleToken =>
+        !["FungibleToken", "FungibleAsset"].includes(item.interface)
+    );
+
+    // Calculate SOL balance
+    const solBalance = data.result.nativeBalance.lamports;
+    if (solBalance > 0) {
+      const solToken = {
+        interface: "FungibleAsset",
+        id: "So11111111111111111111111111111111111111112",
+        content: {
+          $schema: "https://schema.metaplex.com/nft1.0.json",
+          json_uri: "",
+          files: [{
+            uri: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
+            cdn_uri: "",
+            mime: "image/png",
+          }],
+          metadata: {
+            description: "Solana Token",
+            name: "Wrapped SOL",
+            symbol: "SOL",
+            token_standard: "Native Token",
+          },
+          links: {
+            image: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
+          },
         },
-      ],
-      metadata: {
-        description: "Solana Token",
-        name: "Wrapped SOL",
-        symbol: "SOL",
-        token_standard: "Native Token",
-      },
-      links: {
-        image:
-          "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
-      },
-    },
-    authorities: [],
-    compression: {
-      eligible: false,
-      compressed: false,
-      data_hash: "",
-      creator_hash: "",
-      asset_hash: "",
-      tree: "",
-      seq: 0,
-      leaf_id: 0,
-    },
-    grouping: [],
-    royalty: {
-      royalty_model: "",
-      target: null,
-      percent: 0,
-      basis_points: 0,
-      primary_sale_happened: false,
-      locked: false,
-    },
-    creators: [],
-    ownership: {
-      frozen: false,
-      delegated: false,
-      delegate: null,
-      ownership_model: "token",
-      owner: nonFungibleTokens[0]?.ownership.owner,
-    },
-    supply: null,
-    mutable: true,
-    burnt: false,
-    token_info: {
-      symbol: "SOL",
-      balance: solBalance,
-      supply: 0,
-      decimals: 9,
-      token_program: "",
-      associated_token_address: "",
-      price_info: {
-        price_per_token: data.result.nativeBalance.price_per_sol,
-        total_price: data.result.nativeBalance.total_price,
-        currency: "",
-      },
-    },
-  };
+        authorities: [],
+        compression: {
+          eligible: false,
+          compressed: false,
+          data_hash: "",
+          creator_hash: "",
+          asset_hash: "",
+          tree: "",
+          seq: 0,
+          leaf_id: 0,
+        },
+        grouping: [],
+        royalty: {
+          royalty_model: "",
+          target: null,
+          percent: 0,
+          basis_points: 0,
+          primary_sale_happened: false,
+          locked: false,
+        },
+        creators: [],
+        ownership: {
+          frozen: false,
+          delegated: false,
+          delegate: null,
+          ownership_model: "token",
+          owner: nonFungibleTokens[0]?.ownership?.owner || walletAddress,
+        },
+        supply: null,
+        mutable: true,
+        burnt: false,
+        token_info: {
+          symbol: "SOL",
+          balance: solBalance,
+          supply: 0,
+          decimals: 9,
+          token_program: "",
+          associated_token_address: "",
+          price_info: {
+            price_per_token: data.result.nativeBalance.price_per_sol,
+            total_price: data.result.nativeBalance.total_price,
+            currency: "",
+          },
+        },
+      };
 
-  // Add SOL token to the tokens array if balance exists
-  if (solBalance > 0) {
-    fungibleTokens.push(solToken);
+      fungibleTokens.push(solToken);
+    }
+
+    return { fungibleTokens, nonFungibleTokens };
+  } catch (error) {
+    if (error instanceof Error) {
+      if (error.name === 'AbortError') {
+        throw new Error('Request timed out after 15 seconds');
+      }
+      throw error;
+    }
+    throw new Error('An unknown error occurred while fetching assets');
   }
-
-  return { fungibleTokens, nonFungibleTokens };
 };
 
 export default PortfolioPage;
