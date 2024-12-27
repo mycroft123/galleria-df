@@ -208,9 +208,10 @@ const getAllAssets = async (walletAddress: string) => {
     // Process fungible tokens if they exist
     if (fungibleData?.result?.items) {
       fungibleTokens = fungibleData.result.items.filter(
-        (item): item is FungibleToken =>
+        (item: any): item is FungibleToken =>
           item.interface === "FungibleToken" || item.interface === "FungibleAsset",
       );
+      
 
       // Hardcoding the image for USDC
       fungibleTokens = fungibleTokens.map((item) => {
@@ -258,9 +259,10 @@ const getAllAssets = async (walletAddress: string) => {
     // Process non-fungible tokens if they exist
     if (nftData?.result?.items) {
       nonFungibleTokens = nftData.result.items.filter(
-        (item): item is NonFungibleToken =>
+        (item: any): item is NonFungibleToken =>
           !["FungibleToken", "FungibleAsset"].includes(item.interface),
       );
+      
     }
 
     // Calculate SOL balance from lamports (with safety check)
