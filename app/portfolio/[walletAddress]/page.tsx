@@ -34,11 +34,39 @@ const LoadingSpinner = () => (
 const PortfolioPage = async ({ searchParams, params }: PortfolioPageProps) => {
   let assets;
   try {
+    console.log('Starting to fetch assets for wallet:', params.walletAddress);
+    
+    if (!params.walletAddress) {
+      console.error('No wallet address provided');
+      throw new Error('Wallet address is required');
+    }
+
     assets = await getAllAssets(params.walletAddress);
+    console.log('Successfully fetched assets');
+    
   } catch (error) {
-    console.error("Error loading portfolio:", error);
-    throw new Error(
-      `Failed to load portfolio data: ${error instanceof Error ? error.message : 'Unknown error'}`
+    console.error("Detailed portfolio error:", error);
+    console.error("Error stack:", error instanceof Error ? error.stack : 'No stack available');
+    console.error("Wallet address attempted:", params.walletAddress);
+    
+    return (
+      <div className="h-screen bg-radial-gradient flex items-center justify-center">
+        <div className="text-white text-center p-6 rounded-lg">
+          <h2 className="text-xl mb-4">Error Loading Portfolio</h2>
+          <p>{error instanceof Error ? error.message : 'Failed to load portfolio data'}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!assets) {
+    console.error('No assets returned from getAllAssets');
+    return (
+      <div className="h-screen bg-radial-gradient flex items-center justify-center">
+        <div className="text-white text-center">
+          <p>No portfolio data available</p>
+        </div>
+      </div>
     );
   }
 
@@ -49,7 +77,6 @@ const PortfolioPage = async ({ searchParams, params }: PortfolioPageProps) => {
       <div className="lg:pl-20">
         {/* Navigation (Mobile / Side / Primary) */}
         <Navigation searchParams={searchParams} params={params} />
-
         {/* Main area */}
         <main>
           <div className="px-6 py-6">
@@ -127,11 +154,18 @@ const PortfolioPage = async ({ searchParams, params }: PortfolioPageProps) => {
 };
 
 const getAllAssets = async (walletAddress: string) => {
+
+  console.log('Starting getAllAssets for wallet:', walletAddress);
+  
   if (!walletAddress || walletAddress.length !== 44) {
+    console.error('Invalid wallet address:', walletAddress);
     throw new Error("Invalid wallet address format");
   }
 
   const url = process.env.NEXT_PUBLIC_HELIUS_RPC_URL;
+  console.log('Using RPC URL:', url?.substring(0, 20) + '...'); // Log partial URL for security
+
+
   if (!url) {
     throw new Error("NEXT_PUBLIC_HELIUS_RPC_URL is not set");
   }
