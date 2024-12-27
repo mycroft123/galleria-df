@@ -40,7 +40,7 @@ const convertMarkdownToHtml = (markdown: string): string => {
 };
 
 interface TypingMessageProps {
-  content: string | ParsedResponse;  // Update to match Message content type
+  content: string;  // Changed from string | ParsedResponse
   messageIndex: number;
   onComplete: () => void;
   speed?: number;
@@ -130,6 +130,14 @@ const ChatMessage = React.memo(({
   citationsVisible,
   mintedAssets
 }: ChatMessageProps) => {
+
+  const messageContent = React.useMemo(() => {
+    return typeof message.content === 'string' 
+      ? message.content 
+      : generateDisplayText(message.content);
+  }, [message.content]);
+
+
   const [parseStatus, setParseStatus] = useState<ParseStatus>({});
 
   const handleTypingComplete = React.useCallback(() => {
@@ -150,31 +158,25 @@ const ChatMessage = React.memo(({
           ? 'bg-purple-500/10 border border-purple-500/20'
           : 'bg-orange-500/10 border border-orange-500/20'
       }`}>
-        {message.role === 'assistant' ? (
-          <div>
-            <MemoizedTypingMessage
-              content={typeof message.content === 'string' 
-                ? message.content 
-                : generateDisplayText(message.content)}
-              messageIndex={index}
-              onComplete={handleTypingComplete}
-              speed={10}
-              isComplete={typingState.isComplete}
-              displayedContent={typingState.displayedContent}
-            />
-          </div>
-        ) : (
-          <div
-            className="prose prose-invert max-w-none"
-            dangerouslySetInnerHTML={{
-              __html: convertMarkdownToHtml(
-                typeof message.content === 'string'
-                  ? message.content
-                  : generateDisplayText(message.content)
-              )
-            }}
-          />
-        )}
+{message.role === 'assistant' ? (
+  <div>
+    <MemoizedTypingMessage
+      content={messageContent}  // Using our new memoized content
+      messageIndex={index}
+      onComplete={() => onTypingComplete(index, messageContent)}
+      speed={10}
+      isComplete={typingState.isComplete}
+      displayedContent={typingState.displayedContent}
+    />
+  </div>
+) : (
+  <div
+    className="prose prose-invert max-w-none"
+    dangerouslySetInnerHTML={{
+      __html: convertMarkdownToHtml(messageContent)
+    }}
+  />
+)}
       </div>
       {/* ... */}
     </div>
