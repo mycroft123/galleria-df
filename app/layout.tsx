@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
   title: "Galleria",
-  description: "A portfolio viewer from Helius Labs",
+  description: "A portfolio viewer from DeFacts Labs",
 };
 
 const RootLayout = ({ children }: { children: React.ReactNode }) => {

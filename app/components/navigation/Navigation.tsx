@@ -1,8 +1,8 @@
 "use client";
 
 import React, { useState } from "react";
-import { PhotoIcon, StopCircleIcon } from "@heroicons/react/24/outline";
-
+import { MessageSquare, Bot, CircuitBoard } from "lucide-react";
+import { PhotoIcon, StopCircleIcon, LinkIcon } from "@heroicons/react/24/outline";
 import HeaderNavigation from "./HeaderNavigation";
 import MobileNavigation from "./MobileNavigation";
 import SidebarNavigation from "./SidebarNavigation";
@@ -17,8 +17,12 @@ interface NavigationProps {
 }
 
 const navigation = [
+  { name: "Chat", href: "chat", icon: MessageSquare },
+  { name: "AI", href: "ai", icon: Bot },
+  { name: "Strategy", href: "ai2", icon: CircuitBoard },
   { name: "NFTs", href: "nfts", icon: PhotoIcon },
   { name: "Tokens", href: "tokens", icon: StopCircleIcon },
+  { name: "URL Input", href: "url", icon: LinkIcon },
 ];
 
 const Navigation = ({

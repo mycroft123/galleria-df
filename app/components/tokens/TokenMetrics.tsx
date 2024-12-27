@@ -1,11 +1,12 @@
+// TokenMetrics.tsx - Update price calculations
 "use client";
 
 import React, { useEffect, useState } from "react";
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
 import { Pie } from "react-chartjs-2";
+import { FungibleToken } from "@/app/types";
 
 ChartJS.register(ArcElement, Tooltip, Legend);
-import { FungibleToken } from "@/app/types";
 
 interface TokenMetricsProps {
   fungibleTokens: FungibleToken[];
@@ -23,9 +24,11 @@ const TokenMetrics = ({ fungibleTokens }: TokenMetricsProps) => {
   useEffect(() => {
     setTotalTokens(fungibleTokens?.length || 0);
     if (fungibleTokens) {
-      const data = fungibleTokens.map(
-        (token) => token.token_info.price_info?.total_price,
-      );
+      const data = fungibleTokens.map((token) => {
+        const balance = token.token_info.balance / Math.pow(10, token.token_info.decimals);
+        return balance * (token.token_info.price_info?.price_per_token || 0.10);
+      });
+      
       const labels = fungibleTokens.map(
         (token) => token.content.metadata.symbol || token.id || "Unknown Token",
       );
@@ -43,13 +46,13 @@ const TokenMetrics = ({ fungibleTokens }: TokenMetricsProps) => {
         ],
       });
 
-      const total = fungibleTokens.reduce(
-        (acc, token) => acc + (token.token_info.price_info?.total_price || 0),
-        0,
-      );
+      const total = fungibleTokens.reduce((acc, token) => {
+        const balance = token.token_info.balance / Math.pow(10, token.token_info.decimals);
+        return acc + (balance * (token.token_info.price_info?.price_per_token || 0.10));
+      }, 0);
+      
       setTotalValue(total);
 
-      // Set totalToken22
       const totalToken22 = fungibleTokens.filter(
         (token) => token.mint_extensions !== undefined,
       ).length;

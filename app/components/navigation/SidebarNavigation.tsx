@@ -1,5 +1,6 @@
 import { Logo } from "@/app/components";
 import { classNames } from "@/app/utils";
+import { Link } from "lucide-react"; // Import the Link icon
 
 interface SidebarNavigationProps {
     navigation: {
@@ -15,12 +16,21 @@ interface SidebarNavigationProps {
     };
 }
 
+// Define the default navigation items
+const defaultNavigation = [
+    // ... your existing navigation items
+    {
+        name: "URL Input",
+        href: "url",
+        icon: Link
+    }
+];
+
 const SidebarNavigation = ({
-    navigation,
+    navigation = defaultNavigation,
     params,
     searchParams,
- }: SidebarNavigationProps) => {
-  
+}: SidebarNavigationProps) => {
     return (
         <>
             <div className="hidden bg-black bg-opacity-40 backdrop-blur-sm lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:block lg:w-20 lg:overflow-y-auto lg:pb-4">
@@ -45,7 +55,7 @@ const SidebarNavigation = ({
                                         aria-hidden="true"
                                     />
                                     <span className="text-xs font-base mt-1">
-                                        {item.href.charAt(0).toUpperCase() + item.href.slice(1)}
+                                        {item.href === "url" ? "URL" : item.href.charAt(0).toUpperCase() + item.href.slice(1)}
                                     </span>
                                     <span className="sr-only">{item.name}</span>
                                 </a>
