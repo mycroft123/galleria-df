@@ -135,9 +135,9 @@ const ChatMessage = React.memo(({
     const handleParseUrl = async (url: string) => {
       setParseStatus(prev => ({
         ...prev,
-        [url]: { loading: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' }
+        [url]: { loading: true }
       }));
-  
+    
       try {
         const response = await fetch('http://localhost:3002/api/facts-to-nfts', {
           method: 'POST',
@@ -146,7 +146,7 @@ const ChatMessage = React.memo(({
           },
           body: JSON.stringify({ url }),
         });
-  
+    
         const data = await response.json();
         
         if (data.success) {
@@ -157,11 +157,14 @@ const ChatMessage = React.memo(({
         } else {
           throw new Error(data.error || 'Failed to parse URL');
         }
-      } catch (error) {
+      } catch (error: unknown) {
         console.error('Error parsing URL:', error);
         setParseStatus(prev => ({
           ...prev,
-          [url]: { loading: false, error: error.message }
+          [url]: { 
+            loading: false, 
+            error: error instanceof Error ? error.message : 'An unexpected error occurred' 
+          }
         }));
       }
     };
@@ -385,7 +388,7 @@ const ChatAIInput: React.FC = () => {
       const fetchPromise = fetch(url, { ...options, signal });
       const response = await Promise.race([fetchPromise, timeoutPromise]);
       return response;
-    } catch (error) {
+    } catch (error: unknown) {
       if (error instanceof Error && error.name === 'AbortError') {
         throw new Error('Request timed out');
       }
