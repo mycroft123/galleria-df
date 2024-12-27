@@ -39,11 +39,11 @@ const AIInput: React.FC = () => {
     { id: "grok", name: "Grok 2.0" },
   ];
 
-  const fetchWithTimeout = async (url: string, options: RequestInit, timeout: number = 30000) => {
+  const fetchWithTimeout = async (url: string, options: RequestInit, timeout: number = 30000): Promise<Response> => {
     const controller = new AbortController();
     const { signal } = controller;
     
-    const timeoutPromise = new Promise((_, reject) => {
+    const timeoutPromise = new Promise<Response>((_, reject) => {
       const timeoutId = setTimeout(() => {
         controller.abort();
         reject(new Error('Request timed out'));
@@ -58,7 +58,7 @@ const AIInput: React.FC = () => {
         signal,
       });
 
-      const response = await Promise.race([fetchPromise, timeoutPromise]);
+      const response = await Promise.race([fetchPromise, timeoutPromise]) as Response;
       return response;
     } catch (error: unknown) {
       if (error instanceof Error) {
