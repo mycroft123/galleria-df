@@ -154,26 +154,47 @@ const PortfolioPage = async ({ searchParams, params }: PortfolioPageProps) => {
 };
 
 const getAllAssets = async (walletAddress: string) => {
-
-  console.log('Starting getAllAssets for wallet:', walletAddress);
+  // Initial debug logging
+  console.log('=== DEBUG START ===');
+  console.log('1. Wallet Address:', walletAddress);
   
-  if (!walletAddress || walletAddress.length !== 44) {
-    console.error('Invalid wallet address:', walletAddress);
-    throw new Error("Invalid wallet address format");
-  }
+  // Log raw environment variables
+  console.log('2. Raw Environment Variables:');
+  console.log('   RPC URL:', process.env.NEXT_PUBLIC_HELIUS_RPC_URL);
+  console.log('   API Key exists:', !!process.env.NEXT_PUBLIC_HELIUS_API_KEY);
+  console.log('   API Key length:', process.env.NEXT_PUBLIC_HELIUS_API_KEY?.length || 0);
 
-  const url = process.env.NEXT_PUBLIC_HELIUS_RPC_URL;
-  console.log('Using RPC URL:', url?.substring(0, 20) + '...'); // Log partial URL for security
+  // Using Edge-compatible environment variable access
+  const baseUrl = process.env.NEXT_PUBLIC_HELIUS_RPC_URL;
+  const apiKey = process.env.NEXT_PUBLIC_HELIUS_API_KEY;
 
+  console.log('3. Extracted Variables:');
+  console.log('   Base URL:', baseUrl);
+  console.log('   API Key exists:', !!apiKey);
 
-  if (!url) {
+  if (!baseUrl) {
+    console.error('4. ERROR: RPC URL is missing');
     throw new Error("NEXT_PUBLIC_HELIUS_RPC_URL is not set");
   }
 
-  try {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 15000); // 15 second timeout
+  if (!apiKey) {
+    console.error('4. ERROR: API Key is missing');
+    throw new Error("NEXT_PUBLIC_HELIUS_API_KEY is not set");
+  }
 
+  // Construct URL with API key as query parameter
+  const url = `${baseUrl}?api-key=${apiKey}`;
+  
+  // Log URL (safely)
+  const urlObj = new URL(url);
+  console.log('5. Constructed URL:');
+  console.log('   Origin:', urlObj.origin);
+  console.log('   Pathname:', urlObj.pathname);
+  console.log('   Has API Key in query:', urlObj.searchParams.has('api-key'));
+
+  console.log('6. Making fetch request...');
+  
+  try {
     const response = await fetch(url, {
       cache: 'no-store',
       method: "POST",
@@ -194,140 +215,35 @@ const getAllAssets = async (walletAddress: string) => {
           },
         },
       }),
-      signal: controller.signal,
     });
 
-    clearTimeout(timeoutId);
+    console.log('7. Response received:');
+    console.log('   Status:', response.status);
+    console.log('   OK:', response.ok);
 
     if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Failed to fetch data: ${response.status} ${errorText}`);
+      const errorData = await response.json();
+      console.error('8. Error Response Data:', errorData);
+      throw new Error(`Failed to fetch data: ${response.status} ${JSON.stringify(errorData)}`);
     }
 
     const data = await response.json();
+    console.log('8. Success! Data received');
     
-    if (!data.result || !data.result.items) {
-      throw new Error(`Invalid response structure: ${JSON.stringify(data)}`);
+    if (!data.result) {
+      console.error('9. Invalid API response format:', data);
+      throw new Error('Invalid API response format');
     }
 
-    const items: BaseItem[] = data.result.items;
+    const items = data.result.items;
+    console.log('10. Number of items received:', items.length);
+    console.log('=== DEBUG END ===');
 
-    // Split tokens with proper typing
-    let fungibleTokens: FungibleToken[] = items.filter(
-      (item: BaseItem): item is FungibleToken =>
-        item.interface === "FungibleToken" || item.interface === "FungibleAsset"
-    );
-
-    // Handle token images
-    const tokenImages: Record<string, string> = {
-      "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v": 
-        "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png",
-      "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1":
-        "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1/logo.png",
-    };
-
-    fungibleTokens = fungibleTokens.map((item) => {
-      const imageUrl = tokenImages[item.id];
-      if (imageUrl) {
-        return {
-          ...item,
-          content: {
-            ...item.content,
-            files: [{ uri: imageUrl, cdn_uri: "", mime: "image/png" }],
-            links: { image: imageUrl },
-          },
-        };
-      }
-      return item;
-    });
-
-    const nonFungibleTokens: NonFungibleToken[] = items.filter(
-      (item: BaseItem): item is NonFungibleToken =>
-        !["FungibleToken", "FungibleAsset"].includes(item.interface)
-    );
-
-    // Calculate SOL balance
-    const solBalance = data.result.nativeBalance.lamports;
-    if (solBalance > 0) {
-      const solToken = {
-        interface: "FungibleAsset",
-        id: "So11111111111111111111111111111111111111112",
-        content: {
-          $schema: "https://schema.metaplex.com/nft1.0.json",
-          json_uri: "",
-          files: [{
-            uri: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
-            cdn_uri: "",
-            mime: "image/png",
-          }],
-          metadata: {
-            description: "Solana Token",
-            name: "Wrapped SOL",
-            symbol: "SOL",
-            token_standard: "Native Token",
-          },
-          links: {
-            image: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
-          },
-        },
-        authorities: [],
-        compression: {
-          eligible: false,
-          compressed: false,
-          data_hash: "",
-          creator_hash: "",
-          asset_hash: "",
-          tree: "",
-          seq: 0,
-          leaf_id: 0,
-        },
-        grouping: [],
-        royalty: {
-          royalty_model: "",
-          target: null,
-          percent: 0,
-          basis_points: 0,
-          primary_sale_happened: false,
-          locked: false,
-        },
-        creators: [],
-        ownership: {
-          frozen: false,
-          delegated: false,
-          delegate: null,
-          ownership_model: "token",
-          owner: nonFungibleTokens[0]?.ownership?.owner || walletAddress,
-        },
-        supply: null,
-        mutable: true,
-        burnt: false,
-        token_info: {
-          symbol: "SOL",
-          balance: solBalance,
-          supply: 0,
-          decimals: 9,
-          token_program: "",
-          associated_token_address: "",
-          price_info: {
-            price_per_token: data.result.nativeBalance.price_per_sol,
-            total_price: data.result.nativeBalance.total_price,
-            currency: "",
-          },
-        },
-      };
-
-      fungibleTokens.push(solToken);
-    }
-
-    return { fungibleTokens, nonFungibleTokens };
+    // Rest of your existing code...
+    
   } catch (error) {
-    if (error instanceof Error) {
-      if (error.name === 'AbortError') {
-        throw new Error('Request timed out after 15 seconds');
-      }
-      throw error;
-    }
-    throw new Error('An unknown error occurred while fetching assets');
+    console.error('ERROR in getAllAssets:', error);
+    throw error;
   }
 };
 
