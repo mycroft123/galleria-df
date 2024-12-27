@@ -60,9 +60,11 @@ const AIInput: React.FC = () => {
 
       const response = await Promise.race([fetchPromise, timeoutPromise]);
       return response;
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        throw new Error('Request timed out');
+    } catch (error: unknown) {
+      if (error instanceof Error) {
+        if (error.name === 'AbortError') {
+          throw new Error('Request timed out');
+        }
       }
       throw error;
     }
@@ -74,13 +76,9 @@ const AIInput: React.FC = () => {
         return [];
       }
   
-      // Join all parts of the strategy array back together
       const completeJsonStr = rawStrategies.join("");
-      
-      // Parse the complete JSON array
       const strategies = JSON.parse(completeJsonStr);
   
-      // Map to our Strategy interface
       return strategies.map((strategy: { source: string; searchTerms: string[] }) => ({
         source: strategy.source,
         searchTerm: Array.isArray(strategy.searchTerms) ? strategy.searchTerms.join(", ") : strategy.searchTerms
@@ -126,10 +124,8 @@ const AIInput: React.FC = () => {
       setDebug(prev => `${prev}\nResponse: ${JSON.stringify(data, null, 2)}`);
 
       if (data.success && data.strategies) {
-        // Store the raw strategies
         setStrategies(data.strategies);
         
-        // Parse strategies immediately to verify they're valid
         const parsedStrategies = parseStrategies(data.strategies);
         if (parsedStrategies.length > 0) {
           setSelectedStrategy(parsedStrategies[0]);
@@ -141,10 +137,7 @@ const AIInput: React.FC = () => {
         throw new Error(data.error || "No strategies returned");
       }
     } catch (err) {
-      console.error("Error in handleGetStrategies:", err);
-      const errorMessage = err instanceof Error 
-        ? err.message 
-        : 'An unexpected error occurred';
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
       setError(`Error fetching strategies: ${errorMessage}`);
     } finally {
       setLoading(false);
@@ -190,9 +183,7 @@ const AIInput: React.FC = () => {
         throw new Error(data.error || "Unknown error");
       }
     } catch (err) {
-      const errorMessage = err instanceof Error 
-        ? err.message 
-        : 'An unexpected error occurred';
+      const errorMessage = err instanceof Error ? err.message : 'An unexpected error occurred';
       setError(`Error processing query: ${errorMessage}`);
     } finally {
       setLoading(false);
@@ -288,45 +279,45 @@ const AIInput: React.FC = () => {
             </form>
           )}
 
-{activeTab === 'strategy' && strategies && (
-  <form onSubmit={handleSubmitStrategy} className="space-y-4">
-    <div className="space-y-2">
-      {parseStrategies(strategies).map((strategy, index) => (
-        <label
-          key={index}
-          className={`block p-4 border rounded-lg cursor-pointer transition-all ${
-            JSON.stringify(selectedStrategy) === JSON.stringify(strategy)
-              ? "bg-orange-500/20 border-orange-500"
-              : "bg-gray-800 border-gray-600 hover:bg-gray-700 hover:border-gray-400"
-          }`}
-        >
-          <div className="flex items-start gap-4">
-            <input
-              type="radio"
-              name="strategy"
-              className="hidden"
-              checked={JSON.stringify(selectedStrategy) === JSON.stringify(strategy)}
-              onChange={() => setSelectedStrategy(strategy)}
-            />
-            <div className="flex-1">
-              <div className="font-semibold text-white">Source:</div>
-              <div className="text-gray-300 mb-2">{strategy.source}</div>
-              <div className="font-semibold text-white">Search Terms:</div>
-              <div className="text-gray-300">{strategy.searchTerm}</div>
-            </div>
-          </div>
-        </label>
-      ))}
-    </div>
-    <button
-      type="submit"
-      disabled={loading || !selectedStrategy}
-      className="btn btn-warning w-full mt-6"
-    >
-      {loading ? "Processing..." : "Apply Selected Strategy"}
-    </button>
-  </form>
-)}
+          {activeTab === 'strategy' && strategies && (
+            <form onSubmit={handleSubmitStrategy} className="space-y-4">
+              <div className="space-y-2">
+                {parseStrategies(strategies).map((strategy, index) => (
+                  <label
+                    key={index}
+                    className={`block p-4 border rounded-lg cursor-pointer transition-all ${
+                      JSON.stringify(selectedStrategy) === JSON.stringify(strategy)
+                        ? "bg-orange-500/20 border-orange-500"
+                        : "bg-gray-800 border-gray-600 hover:bg-gray-700 hover:border-gray-400"
+                    }`}
+                  >
+                    <div className="flex items-start gap-4">
+                      <input
+                        type="radio"
+                        name="strategy"
+                        className="hidden"
+                        checked={JSON.stringify(selectedStrategy) === JSON.stringify(strategy)}
+                        onChange={() => setSelectedStrategy(strategy)}
+                      />
+                      <div className="flex-1">
+                        <div className="font-semibold text-white">Source:</div>
+                        <div className="text-gray-300 mb-2">{strategy.source}</div>
+                        <div className="font-semibold text-white">Search Terms:</div>
+                        <div className="text-gray-300">{strategy.searchTerm}</div>
+                      </div>
+                    </div>
+                  </label>
+                ))}
+              </div>
+              <button
+                type="submit"
+                disabled={loading || !selectedStrategy}
+                className="btn btn-warning w-full mt-6"
+              >
+                {loading ? "Processing..." : "Apply Selected Strategy"}
+              </button>
+            </form>
+          )}
 
           {activeTab === 'results' && finalResults && (
             <div className="bg-black/20 border border-white/20 rounded-lg p-4">
