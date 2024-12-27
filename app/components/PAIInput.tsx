@@ -208,21 +208,24 @@ const PAIInput: React.FC = () => {
           Service status: {loading ? "Processing..." : error ? "Error" : "Ready"}
         </div>
 
-        <div className="tabs tabs-lifted">
-          <a 
-            className={`tab ${activeTab === 'question' ? 'tab-active' : ''}`}
-            onClick={() => setActiveTab('question')}
-          >
-            Question Input
-          </a>
-          <a 
-            className={`tab ${activeTab === 'results' ? 'tab-active' : ''}`}
-            onClick={() => setActiveTab('results')}
-            disabled={!response}
-          >
-            Results & Sources
-          </a>
-        </div>
+        // Replace the tab elements with buttons
+<div className="tabs tabs-lifted">
+  <button 
+    className={`tab ${activeTab === 'question' ? 'tab-active' : ''}`}
+    onClick={() => setActiveTab('question')}
+    type="button"
+  >
+    Question Input
+  </button>
+  <button 
+    className={`tab ${activeTab === 'results' ? 'tab-active' : ''}`}
+    onClick={() => setActiveTab('results')}
+    disabled={!response}
+    type="button"
+  >
+    Results & Sources
+  </button>
+</div>
 
         <div className="p-4 bg-base-200 rounded-b-box">
           {activeTab === 'question' && (
