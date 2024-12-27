@@ -135,7 +135,7 @@ const ChatMessage = React.memo(({
     const handleParseUrl = async (url: string) => {
       setParseStatus(prev => ({
         ...prev,
-        [url]: { loading: true }
+        [url]: { loading: false, error: error instanceof Error ? error.message : 'An unexpected error occurred' }
       }));
   
       try {
