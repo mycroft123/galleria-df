@@ -16,34 +16,34 @@ interface PerplexityResponse {
 
 const API_URL = "http://localhost:3002/api/ai-perplexity";
 
-// Function to convert markdown to HTML
+
 const convertMarkdownToHtml = (markdown: string): string => {
-  // Handle bold text
+
   let html = markdown.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
   
-  // Handle italic text
+
   html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
   
-  // Handle code blocks
+
   html = html.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
   
-  // Handle inline code
+
   html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
   
-  // Handle headings
+
   html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
   html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
   html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
   
-  // Handle lists
+
   html = html.replace(/^\s*[-*+]\s+(.*)/gm, '<li>$1</li>');
   html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
   
-  // Handle numbered lists
+
   html = html.replace(/^\d+\.\s+(.*)/gm, '<li>$1</li>');
   html = html.replace(/(<li>.*<\/li>)/s, '<ol>$1</ol>');
   
-  // Handle paragraphs
+
   html = html.split('\n\n').map(para => 
     para.trim().startsWith('<') ? para : `<p>${para}</p>`
   ).join('');
@@ -208,7 +208,7 @@ const PAIInput: React.FC = () => {
           Service status: {loading ? "Processing..." : error ? "Error" : "Ready"}
         </div>
 
-        // Replace the tab elements with buttons
+       {/* Tab navigation */}
 <div className="tabs tabs-lifted">
   <button 
     className={`tab ${activeTab === 'question' ? 'tab-active' : ''}`}
