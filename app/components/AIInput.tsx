@@ -211,26 +211,27 @@ const AIInput: React.FC = () => {
         </div>
 
         <div className="tabs tabs-lifted">
-          <a 
+          <button 
+            type="button"
             className={`tab ${activeTab === 'question' ? 'tab-active' : ''}`}
             onClick={() => setActiveTab('question')}
           >
             Question Input
-          </a>
-          <a 
-            className={`tab ${activeTab === 'strategy' ? 'tab-active' : ''}`}
-            onClick={() => setActiveTab('strategy')}
-            disabled={!strategies}
+          </button>
+          <button 
+            type="button"
+            className={`tab ${activeTab === 'strategy' ? 'tab-active' : ''} ${!strategies ? 'cursor-not-allowed opacity-50' : ''}`}
+            onClick={() => strategies && setActiveTab('strategy')}
           >
             Select Strategy
-          </a>
-          <a 
-            className={`tab ${activeTab === 'results' ? 'tab-active' : ''}`}
-            onClick={() => setActiveTab('results')}
-            disabled={!finalResults}
+          </button>
+          <button 
+            type="button"
+            className={`tab ${activeTab === 'results' ? 'tab-active' : ''} ${!finalResults ? 'cursor-not-allowed opacity-50' : ''}`}
+            onClick={() => finalResults && setActiveTab('results')}
           >
             Results
-          </a>
+          </button>
         </div>
 
         <div className="p-4 bg-base-200 rounded-b-box">
