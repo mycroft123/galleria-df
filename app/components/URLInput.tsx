@@ -2,10 +2,29 @@
 
 import React, { useState } from 'react';
 
+interface ProcessingResults {
+  success: boolean;
+  totalFactsProcessed: number;
+  totalMinted: number;
+  mintedFacts: Array<{
+    fact: string;
+    mintId: string;
+    extractedDate: string;
+  }>;
+  processingDetails: {
+    url: string;
+    title: string;
+    contentLength: number;
+    factsSent: number;
+    successfulMints: number;
+    totalBatches: number;
+  };
+}
+
 const URLInput = () => {
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
-  const [results, setResults] = useState(null);
+  const [results, setResults] = useState<ProcessingResults | null>(null);
   const [error, setError] = useState('');
   const [debug, setDebug] = useState('');
 
@@ -41,8 +60,9 @@ const URLInput = () => {
       }
     } catch (err) {
       console.error('Request error:', err);
-      setError(`Error processing URL: ${err.message}`);
-      setDebug(prev => `${prev}\nError: ${err.message}`);
+      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred';
+      setError(`Error processing URL: ${errorMessage}`);
+      setDebug(prev => `${prev}\nError: ${errorMessage}`);
     } finally {
       setLoading(false);
     }
