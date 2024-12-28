@@ -118,6 +118,7 @@ const MemoizedTypingMessage = React.memo(({
 MemoizedTypingMessage.displayName = 'MemoizedTypingMessage';
 
 // Update the ChatMessage component props interface
+// First, update the ChatMessageProps interface
 interface ChatMessageProps {
   message: Message;
   index: number;
@@ -125,22 +126,16 @@ interface ChatMessageProps {
     isComplete: boolean;
     displayedContent: string;
   };
-  onTypingComplete: (index: number, content: string | ParsedResponse) => void;  // Updated type here
+  onTypingComplete: (index: number, content: string | ParsedResponse) => void;  // Updated type
   onCitationToggle: (index: number) => void;
   citationsVisible: boolean;
   mintedAssets: {[url: string]: string};
 }
 
-const ChatMessage = React.memo(({ 
-    message, 
-    index, 
-    typingState, 
-    onTypingComplete,
-    onCitationToggle,
-    citationsVisible,
-    mintedAssets
-  }: ChatMessageProps) => {
-    const [parseStatus, setParseStatus] = useState<ParseStatus>({});
+const ChatMessage = React.memo(({ message, index, typingState, onTypingComplete, onCitationToggle, citationsVisible, mintedAssets }: ChatMessageProps) => {
+ 
+  const [parseStatus, setParseStatus] = useState<ParseStatus>({});
+ 
   
     const handleParseUrl = async (url: string) => {
       setParseStatus(prev => ({
@@ -179,16 +174,9 @@ const ChatMessage = React.memo(({
       }
     };
   
-// Update the handleTypingComplete callback in ChatAIInput component
-const handleTypingComplete = React.useCallback((index: number, content: string | ParsedResponse) => {
-  setTypingStates(prev => ({
-    ...prev,
-    [index]: {
-      isComplete: true,
-      displayedContent: typeof content === 'string' ? content : generateDisplayText(content)
-    }
-  }));
-}, []);
+    const handleTypingComplete = React.useCallback(() => {
+      onTypingComplete(index, message.content);
+    }, [index, message.content, onTypingComplete]);
 
   
     return (
@@ -373,15 +361,13 @@ const ChatAIInput: React.FC = () => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [chatMessages]);
 
-  const handleTypingComplete = React.useCallback((index: number, content: string) => {
+  const handleTypingComplete = React.useCallback((index: number, content: string | ParsedResponse) => {
     setTypingStates(prev => ({
       ...prev,
       [index]: {
         isComplete: true,
-        displayedContent: content
+        displayedContent: typeof content === 'string' ? content : generateDisplayText(content)
       }
-      // ... [previous code remains the same until handleTypingComplete]
-
     }));
   }, []);
 
