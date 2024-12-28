@@ -14,7 +14,7 @@ interface PerplexityResponse {
   }>;
 }
 
-const API_URL = "http://localhost:3002/api/ai-perplexity";
+const API_URL = "https://galleria-df-backend-8zju.vercel.app/api/ai-perplexity";
 
 
 const convertMarkdownToHtml = (markdown: string): string => {

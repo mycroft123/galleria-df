@@ -5,7 +5,16 @@ import { LinkIcon, User, Bot, Send, ChevronDown, ChevronUp } from "lucide-react"
 import { Message, ParsedResponse } from "./types";
 import { generateDisplayText } from "./helpers";
 
-const API_URL = "http://localhost:3002/api/ai-perplexity";
+const getApiUrl = () => {
+  if (process.env.NEXT_PUBLIC_VERCEL_ENV === 'production') {
+    return "https://galleria-df-backend-1hopzcdyd-mycroft123s-projects.vercel.app/api";
+  }
+  return "http://localhost:3002/api";
+};
+
+const API_URL = `${getApiUrl()}/ai-perplexity`;
+const FACTS_TO_NFTS_URL = `${getApiUrl()}/facts-to-nfts`;
+const BATCH_CREATE_NFT_URL = `${getApiUrl()}/batch-create-nft`;
 
 interface ParseStatus {
   [url: string]: {
@@ -40,7 +49,7 @@ const convertMarkdownToHtml = (markdown: string): string => {
 };
 
 interface TypingMessageProps {
-  content: string;  // Changed from string | ParsedResponse
+  content: string;
   messageIndex: number;
   onComplete: () => void;
   speed?: number;
@@ -122,66 +131,213 @@ interface ChatMessageProps {
 }
 
 const ChatMessage = React.memo(({ 
-  message, 
-  index, 
-  typingState, 
-  onTypingComplete,
-  onCitationToggle,
-  citationsVisible,
-  mintedAssets
-}: ChatMessageProps) => {
-
-  const messageContent = React.useMemo(() => {
-    return typeof message.content === 'string' 
-      ? message.content 
-      : generateDisplayText(message.content);
-  }, [message.content]);
-
-
-  const [parseStatus, setParseStatus] = useState<ParseStatus>({});
-
-  const handleTypingComplete = React.useCallback(() => {
-    // Convert ParsedResponse to string if needed
-    const contentString = typeof message.content === 'string' 
-      ? message.content 
-      : generateDisplayText(message.content);
-    onTypingComplete(index, contentString);
-  }, [index, message.content, onTypingComplete]);
-
-  // Rest of the component remains the same...
-
-  return (
-    <div className="space-y-3">
-      {/* ... */}
-      <div className={`rounded-xl p-4 ${
-        message.role === 'user'
-          ? 'bg-purple-500/10 border border-purple-500/20'
-          : 'bg-orange-500/10 border border-orange-500/20'
-      }`}>
-{message.role === 'assistant' ? (
-  <div>
-    <MemoizedTypingMessage
-      content={messageContent}  // Using our new memoized content
-      messageIndex={index}
-      onComplete={() => onTypingComplete(index, messageContent)}
-      speed={10}
-      isComplete={typingState.isComplete}
-      displayedContent={typingState.displayedContent}
-    />
-  </div>
-) : (
-  <div
-    className="prose prose-invert max-w-none"
-    dangerouslySetInnerHTML={{
-      __html: convertMarkdownToHtml(messageContent)
-    }}
-  />
-)}
+    message, 
+    index, 
+    typingState, 
+    onTypingComplete,
+    onCitationToggle,
+    citationsVisible,
+    mintedAssets
+  }: ChatMessageProps) => {
+    const [parseStatus, setParseStatus] = useState<ParseStatus>({});
+  
+    const handleParseUrl = async (url: string) => {
+      setParseStatus(prev => ({
+        ...prev,
+        [url]: { loading: true }
+      }));
+    
+      try {
+        const response = await fetch(FACTS_TO_NFTS_URL, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ url }),
+        });
+    
+        const data = await response.json();
+        
+        if (data.success) {
+          setParseStatus(prev => ({
+            ...prev,
+            [url]: { loading: false, results: data }
+          }));
+        } else {
+          throw new Error(data.error || 'Failed to parse URL');
+        }
+      } catch (error) {
+        console.error('Error parsing URL:', error);
+        setParseStatus(prev => ({
+          ...prev,
+          [url]: { 
+            loading: false, 
+            error: error instanceof Error ? error.message : 'An unknown error occurred'
+          }
+        }));
+      }
+    };
+  
+    const handleTypingComplete = React.useCallback(() => {
+      onTypingComplete(index, message.content);
+    }, [index, message.content, onTypingComplete]);
+  
+    return (
+      <div className="space-y-3">
+        {/* Message Header */}
+        <div className={`flex items-center gap-2 ${
+          message.role === 'user' ? 'justify-end' : 'justify-start'
+        }`}>
+          {message.role === 'assistant' && (
+            <div className="flex items-center gap-2">
+              <div className="bg-orange-500/20 p-1.5 rounded-lg">
+                <Bot size={14} className="text-orange-400" />
+              </div>
+              <span className="text-orange-400 text-sm font-medium">DeFacts</span>
+            </div>
+          )}
+          {message.role === 'user' && (
+            <div className="flex items-center gap-2">
+              <span className="text-purple-400 text-sm font-medium">You</span>
+              <div className="bg-purple-500/20 p-1.5 rounded-lg">
+                <User size={14} className="text-purple-400" />
+              </div>
+            </div>
+          )}
+        </div>
+  
+        {/* Message Content */}
+        <div className={`rounded-xl p-4 ${
+          message.role === 'user'
+            ? 'bg-purple-500/10 border border-purple-500/20'
+            : 'bg-orange-500/10 border border-orange-500/20'
+        }`}>
+          {message.role === 'assistant' ? (
+            <div>
+              <MemoizedTypingMessage
+                content={message.content}
+                messageIndex={index}
+                onComplete={handleTypingComplete}
+                speed={10}
+                isComplete={typingState.isComplete}
+                displayedContent={typingState.displayedContent}
+              />
+            </div>
+          ) : (
+            <div
+              className="prose prose-invert max-w-none"
+              dangerouslySetInnerHTML={{
+                __html: convertMarkdownToHtml(message.content as string)
+              }}
+            />
+          )}
+        </div>
+  
+        {/* Citations Section - Moved below message content */}
+        {message.role === 'assistant' && message.citations && message.citations.length > 0 && (
+          <div className="bg-gray-800/30 rounded-lg border border-gray-700">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                onCitationToggle(index);
+              }}
+              className="w-full p-3 flex items-center justify-between hover:bg-gray-700/30 rounded-lg transition-colors"
+            >
+              <div className="flex items-center gap-2">
+                <div className="bg-gray-700 p-1.5 rounded-lg">
+                  <LinkIcon size={14} className="text-orange-300" />
+                </div>
+                <span className="text-orange-300 text-sm font-medium">
+                  ({message.citations.length}) Web Sources
+                </span>
+              </div>
+              {citationsVisible ?
+                <ChevronUp size={16} className="text-orange-300" /> :
+                <ChevronDown size={16} className="text-orange-300" />
+              }
+            </button>
+            
+            {citationsVisible && (
+              <div className="p-3 space-y-4">
+                {message.citations.map((citation, citationIndex) => (
+                  <div key={citationIndex} className="space-y-2">
+                    <div className="flex items-start justify-between gap-4">
+                      <a
+                        href={citation}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-orange-300 hover:text-orange-200 text-sm break-all hover:bg-orange-500/10 p-2 rounded-lg transition-colors flex-grow"
+                      >
+                        {citation}
+                      </a>
+                      {mintedAssets[citation] && (
+                        <button
+                          onClick={() => handleParseUrl(citation)}
+                          disabled={parseStatus[citation]?.loading}
+                          className="px-3 py-1.5 bg-orange-500/10 hover:bg-orange-500/20 text-orange-300 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                        >
+                          {parseStatus[citation]?.loading ? 'Parsing...' : 'Parse for Facts'}
+                        </button>
+                      )}
+                    </div>
+  
+                    {mintedAssets[citation] && (
+                      <div className="text-xs text-gray-400 pl-2">
+                          NFT Asset ID:{" "}
+                          <a 
+                          href={`https://explorer.solana.com/address/${mintedAssets[citation]}/metadata?cluster=devnet`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          id={`solana-explorer-${mintedAssets[citation]}`}
+                          aria-label="View NFT metadata on Solana Explorer (opens in new window)"
+                          className="hover:text-gray-300"
+                          >
+                          {mintedAssets[citation]}
+                          </a>
+                      </div>
+                    )}
+  
+                    {parseStatus[citation]?.error && (
+                      <div className="text-xs text-red-400 pl-2">
+                        Error: {parseStatus[citation].error}
+                      </div>
+                    )}
+  
+                    {parseStatus[citation]?.results && (
+                      <div className="bg-gray-900/30 rounded-lg p-3 mt-2">
+                        <h4 className="text-sm font-medium text-orange-300 mb-2">Parsing Results</h4>
+                        <div className="space-y-1 text-xs">
+                          <p className="text-gray-300">
+                            Facts Found: {parseStatus[citation].results.totalFactsProcessed}
+                          </p>
+                          <p className="text-gray-300">
+                            Facts Minted: {parseStatus[citation].results.totalMinted}
+                          </p>
+                        </div>
+                        {parseStatus[citation].results.mintedFacts?.length > 0 && (
+                          <div className="mt-2 space-y-1">
+                            <p className="text-sm font-medium text-orange-300">Minted Facts:</p>
+                            {parseStatus[citation].results.mintedFacts.map((fact: any, i: number) => (
+                              <div key={i} className="text-xs text-gray-300 pl-2">
+                                • {fact.fact.substring(0, 100)}...
+                                <div className="text-gray-400">
+                                  NFT ID: {fact.mintId}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
       </div>
-      {/* ... */}
-    </div>
-  );
-});
+    );
+  });
 
 ChatMessage.displayName = 'ChatMessage';
 
@@ -215,6 +371,8 @@ const ChatAIInput: React.FC = () => {
         isComplete: true,
         displayedContent: content
       }
+      // ... [previous code remains the same until handleTypingComplete]
+
     }));
   }, []);
 
@@ -241,7 +399,7 @@ const ChatAIInput: React.FC = () => {
       const fetchPromise = fetch(url, { ...options, signal });
       const response = await Promise.race([fetchPromise, timeoutPromise]);
       return response;
-    } catch (error: unknown) {
+    } catch (error) {
       if (error instanceof Error && error.name === 'AbortError') {
         throw new Error('Request timed out');
       }
@@ -256,16 +414,12 @@ const ChatAIInput: React.FC = () => {
     setLoading(true);
     setError("");
 
-// For user messages
-const newMessages: Message[] = [...chatMessages, { 
-  role: 'user',
-  content: chatInput,  // chatInput is already a string
-  timestamp: Date.now() 
-}];
-setChatMessages(newMessages);
-
-
-
+    const newMessages = [...chatMessages, { 
+      role: 'user', 
+      content: chatInput, 
+      timestamp: Date.now() 
+    }];
+    setChatMessages(newMessages);
 
     try {
       const requestBody = {
@@ -342,18 +496,17 @@ setChatMessages(newMessages);
         const displayText = generateDisplayText(parsedContent);
         const messageIndex = newMessages.length;
 
-       // For assistant messages
-const newMessage: Message = {
-  role: 'assistant',
-  content: displayText,  // displayText is a string generated from ParsedResponse
-  timestamp: Date.now(),
-  citations: data.citations || []
-};
+        const newMessage: Message = {
+          role: 'assistant',
+          content: displayText,
+          timestamp: Date.now(),
+          citations: data.citations || []
+        };
 
         // Automatically mint NFTs for citations
         if (data.citations && data.citations.length > 0) {
           try {
-            const mintResponse = await fetch('http://localhost:3002/api/batch-create-nft', {
+            const mintResponse = await fetch(BATCH_CREATE_NFT_URL, {
               method: 'POST',
               headers: {
                 'Content-Type': 'application/json',

@@ -19,7 +19,14 @@ interface AIResponse {
   error?: string;
 }
 
-const API_URL = "http://localhost:3002/api";
+const getApiUrl = () => {
+  if (process.env.NEXT_PUBLIC_VERCEL_ENV === 'production') {
+    return "https://galleria-df-backend-1hopzcdyd-mycroft123s-projects.vercel.app/api";
+  }
+  return "http://localhost:3002/api";
+};
+
+const API_URL = getApiUrl();
 
 const AIInput: React.FC = () => {
   const [question, setQuestion] = useState<string>("");
