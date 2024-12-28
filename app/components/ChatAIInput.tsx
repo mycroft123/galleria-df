@@ -49,7 +49,7 @@ const convertMarkdownToHtml = (markdown: string): string => {
 };
 
 interface TypingMessageProps {
-  content: string;
+  content: string | ParsedResponse;  // Update to accept both types
   messageIndex: number;
   onComplete: () => void;
   speed?: number;
@@ -64,7 +64,12 @@ const MemoizedTypingMessage = React.memo(({
   speed = 1,
   isComplete,
   displayedContent 
-}: TypingMessageProps) => {
+}: TypingMessageProps) => { 
+  // Convert content to string if it's a ParsedResponse
+  const contentString = typeof content === 'string' ? 
+    content : 
+    generateDisplayText(content);
+  
   const [currentContent, setCurrentContent] = useState(displayedContent);
   const [isTyping, setIsTyping] = useState(!isComplete);
 
@@ -76,8 +81,8 @@ const MemoizedTypingMessage = React.memo(({
       const typeNextCharacter = () => {
         if (!isMounted) return;
         
-        if (currentIndex <= content.length) {
-          const newContent = content.slice(0, currentIndex);
+        if (currentIndex <= contentString.length) {
+          const newContent = contentString.slice(0, currentIndex);
           setCurrentContent(newContent);
           currentIndex++;
           setTimeout(typeNextCharacter, speed);
@@ -93,13 +98,13 @@ const MemoizedTypingMessage = React.memo(({
         isMounted = false;
       };
     }
-  }, [content, speed, onComplete, isComplete, isTyping, currentContent]);
+  }, [contentString, speed, onComplete, isComplete, isTyping, currentContent]);
 
   useEffect(() => {
     if (isComplete) {
-      setCurrentContent(content);
+      setCurrentContent(contentString);
     }
-  }, [isComplete, content]);
+  }, [isComplete, contentString]);
 
   return (
     <div className="prose prose-invert max-w-none whitespace-pre-wrap">
