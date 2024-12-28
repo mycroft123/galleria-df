@@ -20,7 +20,7 @@ const getApiUrl = () => {
     return "http://localhost:3002/api";
   }
   // Default to Vercel URL for all other cases
-  return "https://galleria-df-backend-1hopzcdyd-mycroft123s-projects.vercel.app/api";
+  return "https://galleria-df-backend.vercel.app/api";  // Updated to use the main production URL
 };
 
 const API_URL = `${getApiUrl()}/ai-perplexity`;
