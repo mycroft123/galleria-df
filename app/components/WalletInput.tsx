@@ -7,7 +7,8 @@ import { toast } from "react-toastify";
 import { Button } from "@/app/components";
 
 const WalletInput = ({ source }: { source: string }) => {
-  const [inputValue, setInputValue] = useState<string>(""); // State for the input field value
+  const DEFAULT_WALLET = "ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp";
+  const [inputValue, setInputValue] = useState<string>(DEFAULT_WALLET);
   const [isValid, setIsValid] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
 
@@ -16,7 +17,6 @@ const WalletInput = ({ source }: { source: string }) => {
   const searchParams = useSearchParams();
 
   const validateSolanaPublicKey = async (address: string): Promise<string | null> => {
-    // check if the address is already in the search params
     let publicKey;
     if (typeof window !== "undefined") {
       const url = window.location.href;
@@ -24,19 +24,16 @@ const WalletInput = ({ source }: { source: string }) => {
       const match = url.match(addressRegex);
       publicKey = match ? match[1] : null;
 
-      // Now you can use publicKey as needed
       console.log(publicKey);
     } else {
-      // Handle the case where window is undefined (e.g., during server-side rendering)
       console.warn(
         "Window is undefined. This code may not work as expected during server-side rendering.",
       );
     }
 
-    // if publickey is already in the search params, return it
     if (publicKey && publicKey === address) {
-      setIsLoading(false); // Re-enable the button
-      setInputValue(""); // Reset the input field to an empty string
+      setIsLoading(false);
+      return publicKey;  // Return the public key instead of clearing input
     }
 
     if (/^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)) {
@@ -55,7 +52,7 @@ const WalletInput = ({ source }: { source: string }) => {
   };
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setInputValue(e.target.value); // Update the inputValue state
+    setInputValue(e.target.value);
   };
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -66,13 +63,13 @@ const WalletInput = ({ source }: { source: string }) => {
 
     if (!resolvedAddr) {
       toast.error("Something went wrong");
-      setInputValue(""); // Reset the input field to an empty string
+      setInputValue(DEFAULT_WALLET);  // Reset to default wallet instead of empty string
       setIsLoading(false);
       return;
     }
 
-    setIsValid(true); // Assuming the address is valid if it's resolved
-    const currentView = searchParams.get("view") || "nfts";
+    setIsValid(true);
+    const currentView = searchParams.get("view") || "chat";
 
     try {
       await router.push(
@@ -82,7 +79,22 @@ const WalletInput = ({ source }: { source: string }) => {
       console.log("Error", error);
       toast.error("Something went wrong");
     }
+    setIsLoading(false);
   };
+
+  // Initialize the route with the default wallet if no wallet is currently set
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      const url = window.location.href;
+      const addressRegex = /portfolio\/([^\/?]+)/;
+      const match = url.match(addressRegex);
+      
+      if (!match) {
+        const currentView = searchParams.get("view") || "chat";
+        router.push(`/portfolio/${DEFAULT_WALLET}?view=${currentView}`);
+      }
+    }
+  }, []);
 
   return (
     <form
@@ -90,7 +102,7 @@ const WalletInput = ({ source }: { source: string }) => {
       className="relative isolate flex h-11 w-[300px] items-center pr-1.5 md:w-[450px]"
     >
       <label htmlFor={id} className="sr-only">
-        Solana Wallet Address
+        DeFacts Wallet Address
       </label>
       <input
         required
@@ -98,7 +110,7 @@ const WalletInput = ({ source }: { source: string }) => {
         autoComplete="walletAddress"
         name="walletAddress"
         id={id}
-        placeholder="Solana Wallet Address"
+        placeholder="DeFacts Wallet Address"
         className="peer w-0 flex-auto bg-transparent px-4 py-2.5 text-base text-white placeholder:text-gray-400 focus:outline-none sm:text-[0.8125rem]/6"
         value={inputValue}
         onChange={handleInputChange}

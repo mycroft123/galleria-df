@@ -14,6 +14,18 @@ import TokenMetrics from "./tokens/TokenMetrics";
 import TokenTable from "./tokens/TokenTable";
 import TokensList from "./tokens/TokensList";
 import WalletInput from "./WalletInput";
+// In index.tsx, add:
+import URLInput from './URLInput';  // Add this import
+import AIInput from './AIInput';  // Add this import
+// components/index.ts
+
+
+
+export { default as ChatAIInput } from './ChatAIInput';
+// ... other exports
+// in @/app/components/index.ts
+export { default as PAIInput } from './PAIInput';
+export { URLInput };  // Add this export
 
 export {
   Button,
@@ -32,4 +44,8 @@ export {
   TokenTable,
   TokensList,
   WalletInput,
+  AIInput,
 };
+
+// In app/components/index.ts
+export { default as SymbolFilter } from './SymbolFilter';
