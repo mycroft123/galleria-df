@@ -413,14 +413,15 @@ const ChatAIInput: React.FC = () => {
   
     setLoading(true);
     setError("");
-
-    const newMessages = [...chatMessages, { 
-      role: 'user', 
-      content: chatInput, 
-      timestamp: Date.now() 
-    }];
+  
+    const newUserMessage: Message = {
+      role: 'user' as const,
+      content: chatInput,
+      timestamp: Date.now()
+    };
+    const newMessages = [...chatMessages, newUserMessage];
     setChatMessages(newMessages);
-
+  
     try {
       const requestBody = {
         model: defaultModel,
@@ -457,7 +458,7 @@ const ChatAIInput: React.FC = () => {
           }
         ],
       };
-
+  
       setDebug(`Requesting from AI API\nRequest Body: ${JSON.stringify(requestBody, null, 2)}`);
       
       const response = await fetchWithTimeout(
@@ -472,19 +473,19 @@ const ChatAIInput: React.FC = () => {
         },
         30000
       );
-
+  
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({}));
         throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
       }
-
+  
       const data = await response.json();
       setDebug(prev => `${prev}\nResponse: ${JSON.stringify(data, null, 2)}`);
-
+  
       if (data.choices?.[0]?.message?.content) {
         let rawContent = data.choices[0].message.content;
         rawContent = rawContent.replace(/```json\s*/, '').replace(/```\s*$/, '').trim();
-
+  
         let parsedContent: ParsedResponse;
         try {
           parsedContent = JSON.parse(rawContent);
@@ -492,17 +493,17 @@ const ChatAIInput: React.FC = () => {
           console.error("Failed to parse JSON:", rawContent);
           throw new Error("Failed to parse JSON response from the API.");
         }
-
+  
         const displayText = generateDisplayText(parsedContent);
         const messageIndex = newMessages.length;
-
-        const newMessage: Message = {
-          role: 'assistant',
+  
+        const newAssistantMessage: Message = {
+          role: 'assistant' as const,
           content: displayText,
           timestamp: Date.now(),
           citations: data.citations || []
         };
-
+  
         // Automatically mint NFTs for citations
         if (data.citations && data.citations.length > 0) {
           try {
@@ -519,7 +520,7 @@ const ChatAIInput: React.FC = () => {
                 }))
               }),
             });
-
+  
             const mintData = await mintResponse.json();
             
             if (mintData.success) {
@@ -534,8 +535,8 @@ const ChatAIInput: React.FC = () => {
             console.error('Error minting NFTs:', error);
           }
         }
-
-        setChatMessages(prev => [...prev, newMessage]);
+  
+        setChatMessages(prev => [...prev, newAssistantMessage]);
         setTypingStates(prev => ({
           ...prev,
           [messageIndex]: {
