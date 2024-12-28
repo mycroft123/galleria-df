@@ -117,6 +117,7 @@ const MemoizedTypingMessage = React.memo(({
 
 MemoizedTypingMessage.displayName = 'MemoizedTypingMessage';
 
+// Update the ChatMessage component props interface
 interface ChatMessageProps {
   message: Message;
   index: number;
@@ -124,7 +125,7 @@ interface ChatMessageProps {
     isComplete: boolean;
     displayedContent: string;
   };
-  onTypingComplete: (index: number, content: string) => void;
+  onTypingComplete: (index: number, content: string | ParsedResponse) => void;  // Updated type here
   onCitationToggle: (index: number) => void;
   citationsVisible: boolean;
   mintedAssets: {[url: string]: string};
@@ -178,9 +179,17 @@ const ChatMessage = React.memo(({
       }
     };
   
-    const handleTypingComplete = React.useCallback(() => {
-      onTypingComplete(index, message.content);
-    }, [index, message.content, onTypingComplete]);
+// Update the handleTypingComplete callback in ChatAIInput component
+const handleTypingComplete = React.useCallback((index: number, content: string | ParsedResponse) => {
+  setTypingStates(prev => ({
+    ...prev,
+    [index]: {
+      isComplete: true,
+      displayedContent: typeof content === 'string' ? content : generateDisplayText(content)
+    }
+  }));
+}, []);
+
   
     return (
       <div className="space-y-3">
