@@ -15,11 +15,11 @@ interface PerplexityResponse {
 }
 
 const getApiUrl = () => {
-  // In development, use localhost
-  if (process.env.NODE_ENV === 'development') {
+  // Check for local development environment
+  if (window.location.hostname === 'localhost') {
     return "http://localhost:3002/api";
   }
-  // In all other cases (including production), use the Vercel URL
+  // Default to Vercel URL for all other cases
   return "https://galleria-df-backend-1hopzcdyd-mycroft123s-projects.vercel.app/api";
 };
 
