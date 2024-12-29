@@ -7,7 +7,7 @@ import { generateDisplayText } from "./helpers";
 
 const getApiUrl = () => {
   if (process.env.NEXT_PUBLIC_VERCEL_ENV === 'production') {
-    return "https://galleria-df-backend.vercel.app/api/";
+    return "https://galleria-df-backend.vercel.app/api";
   }
   return "http://localhost:3002/api";
 };
