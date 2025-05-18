@@ -2,14 +2,15 @@
 
 import React, { useState } from "react";
 import { NonFungibleToken } from "@/app/types";
+import Link from "next/link";
 
 interface NFTCardProps {
   walletAddress: string;
   nftData: NonFungibleToken;
-  searchParams: string;
+  searchParams?: string;
 }
 
-const NFTCard = ({ walletAddress, nftData, searchParams }: NFTCardProps) => {
+const NFTCard = ({ walletAddress, nftData }: NFTCardProps) => {
   const [isLoaded, setIsLoaded] = useState(false);
 
   const imageSrc = nftData.content.links.image;
@@ -29,10 +30,12 @@ const NFTCard = ({ walletAddress, nftData, searchParams }: NFTCardProps) => {
 
   return (
     <div className="group w-[150px] rounded-lg bg-gray-800/10 bg-opacity-20 p-1.5 ring-1 ring-white/10 transition duration-200 ease-in-out hover:bg-gray-800/20 hover:ring-white/30">
-      <a href={`/portfolio/${walletAddress}?${searchParams}&details=${mint}`}>
+      <Link 
+        href={`/portfolio/${walletAddress}?view=nfts&details=${mint}`}
+        scroll={false}
+      >
         <div className="rounded-lg p-1 flex flex-col justify-between">
           <div className="flex-grow">
-            {/* Added flex centering to image container */}
             <div className="h-20 overflow-hidden rounded-lg flex items-center justify-center bg-black/20">
               {!isLoaded && (
                 <div className="skeleton-seconda skeleton h-full w-full"></div>
@@ -65,7 +68,7 @@ const NFTCard = ({ walletAddress, nftData, searchParams }: NFTCardProps) => {
             </div>
           </div>
         </div>
-      </a>
+      </Link>
     </div>
   );
 };

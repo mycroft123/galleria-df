@@ -14,18 +14,26 @@ import TokenMetrics from "./tokens/TokenMetrics";
 import TokenTable from "./tokens/TokenTable";
 import TokensList from "./tokens/TokensList";
 import WalletInput from "./WalletInput";
-// In index.tsx, add:
-import URLInput from './URLInput';  // Add this import
-import AIInput from './AIInput';  // Add this import
-// components/index.ts
+import Analysis from './Analysis';
+import URLInput from './URLInput';
+import AIInput from './AIInput';
 
+// Import new tokenbalance components
+import PortfolioView from "./tokenbalance/PortfolioView";
+import { 
+  TokenDashboard, 
+  TokenBalanceView, 
+  NFTRevenueTable, 
+  RevenueGauge, 
+  NFTEarningsSummary 
+} from "./tokenbalance";
 
-
+export { default as RefreshButton } from './RefreshButton';
 export { default as ChatAIInput } from './ChatAIInput';
-// ... other exports
-// in @/app/components/index.ts
 export { default as PAIInput } from './PAIInput';
-export { URLInput };  // Add this export
+export { default as Story } from './Story';
+export { default as Analysis } from './Analysis';
+export { URLInput };
 
 export {
   Button,
@@ -45,7 +53,14 @@ export {
   TokensList,
   WalletInput,
   AIInput,
+  
+  // New portfolio components
+  PortfolioView,
+  TokenDashboard,
+  TokenBalanceView,
+  NFTRevenueTable,
+  RevenueGauge,
+  NFTEarningsSummary
 };
 
-// In app/components/index.ts
 export { default as SymbolFilter } from './SymbolFilter';

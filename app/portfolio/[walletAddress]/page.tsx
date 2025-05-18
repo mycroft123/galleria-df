@@ -1,134 +1,200 @@
-import React, { Suspense } from "react";
+import { Metadata } from "next";
+import { Suspense } from "react";
+import { redirect } from "next/navigation";
 
 import {
   NFTDetails,
   TokenDetails,
   TokensList,
-  NFTList,
+  NFTTable,
   TokenMetrics,
   NFTMetrics,
   Navigation,
   URLInput,
   AIInput,
   PAIInput,
-  ChatAIInput
+  ChatAIInput,
+  Analysis,
+  Story
 } from "@/app/components";
+import PortfolioView from "@/app/components/tokenbalance/PortfolioView";
 
 import { FungibleToken, NonFungibleToken } from "@/app/types";
 
-interface PortfolioPageProps {
-  searchParams: { view: string; details: string; tokenDetails: string };
-  params: { walletAddress: string };
+interface GroupedNFTs {
+  name: string;
+  count: number;
+  nfts: NonFungibleToken[];
 }
 
-const PortfolioPage = async ({ searchParams, params }: PortfolioPageProps) => {
-  // Fetch both fungible and non-fungible token data
-  const { fungibleTokens, nonFungibleTokens } = await getAllAssets(
-    params.walletAddress,
-  );
+type SearchParams = { 
+  view?: string; 
+  details?: string; 
+  tokenDetails?: string;
+  collection?: string;
+  type?: string;
+  symbol?: string;
+  search?: string;
+  [key: string]: string | string[] | undefined;
+};
+
+type Props = {
+  walletAddress: string;
+};
+
+// Helper function to safely get params
+const getParams = async (params: Props) => {
+  'use server';
+  return params;
+};
+
+// Helper function to safely get search params
+const getSearchParams = async (searchParams: SearchParams) => {
+  'use server';
+  return searchParams;
+};
+
+interface PageProps {
+  params: { walletAddress: string };
+  searchParams: SearchParams;
+}
+
+const PortfolioPage = async ({ params, searchParams }: PageProps) => {
+  // Await params and searchParams safely
+  const awaitedParams = await getParams(params);
+  const awaitedSearchParams = await getSearchParams(searchParams);
+
+  // Destructure awaited values
+  const walletAddress = awaitedParams.walletAddress || "ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp";
+  const { view, details, tokenDetails } = awaitedSearchParams;
+
+  // No redirect for chat view - will be displayed in iframe
+
+  // Fetch assets
+  const { fungibleTokens, nonFungibleTokens } = await getAllAssets(walletAddress);
+
+  const hasModal = details || tokenDetails;
+  const modalClass = hasModal ? "flex h-screen flex-col overflow-hidden" : "";
 
   return (
-    <div className="h-screen bg-radial-gradient">
+    <div className="min-h-screen bg-radial-gradient">
       <div className="lg:pl-20">
-        {/* Navigation (Mobile / Side / Primary) */}
-        <Navigation searchParams={searchParams} params={params} />
+        {/* Navigation - Added fixed positioning and z-index */}
+        <div className="fixed top-0 left-0 right-0 z-50 bg-radial-gradient">
+          <Navigation searchParams={awaitedSearchParams} params={awaitedParams} />
+        </div>
 
         {/* Main area */}
-        <main>
-          <div className="px-6 py-6">
-            {/* Tokens */}
-            <div>
-              {searchParams.tokenDetails && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-700 bg-opacity-70">
-                  <div className="h-4/5 w-10/12 sm:w-2/3">
-                    <TokenDetails
-                      tokenData={fungibleTokens.filter(
-                        (item) => item.id === searchParams.tokenDetails,
-                      )}
-                      searchParams={searchParams}
-                      walletAddress={params.walletAddress}
-                    />
-                  </div>
+        <main className={view === "chat" ? "pt-16 px-0 py-0" : "pt-16"}>
+          <div className={view === "chat" ? "" : "px-6 py-6"}>
+            {/* Tokens Modal */}
+            {tokenDetails && (
+              <div className="fixed inset-0 z-40 flex items-center justify-center bg-orange-900 bg-opacity-70">
+                <div className="h-4/5 w-10/12 sm:w-2/3">
+                  <TokenDetails
+                    key={`token-${tokenDetails}`}
+                    tokenData={fungibleTokens.filter(token => token.id === tokenDetails)}
+                    searchParams={awaitedSearchParams}
+                    walletAddress={walletAddress}
+                  />
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {/* NFTS */}
-            <div>
-              {searchParams.details && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-neutral-700 bg-opacity-70">
-                  <div className="h-4/5 w-10/12 sm:w-2/3">
-                    <NFTDetails
-                      nftData={nonFungibleTokens.filter(
-                        (item) => item.id === searchParams.details,
-                      )}
-                      searchParams={"view=" + searchParams.view}
-                      walletAddress={params.walletAddress}
-                    />
-                  </div>
+            {/* NFTs Modal */}
+            {details && (
+              <div className="fixed inset-0 z-50 flex items-center justify-center bg-orange-900 bg-opacity-70">
+                <div className="h-4/5 w-10/12 sm:w-2/3">
+                  <NFTDetails
+                    key={`nft-${details}`}
+                    nftData={nonFungibleTokens.filter(nft => nft.id === details)}
+                    searchParams={`view=${view}`}
+                    walletAddress={walletAddress}
+                  />
                 </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            <div
-              className={`${
-                searchParams.details
-                  ? "flex h-screen flex-col overflow-hidden"
-                  : ""
-              }${
-                searchParams.tokenDetails
-                  ? "flex h-screen flex-col overflow-hidden"
-                  : ""
-              }`}
-            >
+            <div className={modalClass}>
               <Suspense
-                fallback={<div>Loading...</div>}
-                key={searchParams.view}
+                fallback={
+                  <div className="flex h-screen items-center justify-center">
+                    <div className="h-32 w-32 animate-spin rounded-full border-b-2 border-t-2 border-orange-400"></div>
+                  </div>
+                }
+                key={`${view}-${walletAddress}`}
               >
                 <div>
-                  {searchParams.view === "ai" && (
+                  {view === "ai" && (
                     <div className="flex justify-center items-center">
-                      <AIInput />
+                      <AIInput key={`ai-${walletAddress}`} />
                     </div>
                   )}
-                  {searchParams.view === "ai2" && (
+                  
+                  {view === "ai2" && (
                     <div className="flex justify-center items-center">
-                      <PAIInput />
+                      <PAIInput key={`pai-${walletAddress}`} />
                     </div>
                   )}
-                  {searchParams.view === "url" && (
-                    <div className="flex justify-center items-center">
-                      <URLInput />
-                    </div>
-                  )}
-                  {searchParams.view === "chat" && (
-                    <div className="flex justify-center items-center">
-                      <ChatAIInput />
-                    </div>
-                  )}
-                  {searchParams.view === "nfts" && (
-                    <>
-                      {/* NFTs Metrics */}
-                      <NFTMetrics nonFungibleTokens={nonFungibleTokens} />
 
-                      {/* NFTs List */}
-                      <NFTList
-                        tokens={nonFungibleTokens}
-                        searchParams={searchParams.toString()}
-                        walletAddress={params.walletAddress}
+                  {view === "story" && (
+                      <div className="flex justify-center items-center">
+                        <Story key={`story-${walletAddress}`} />
+                      </div>
+                  )}
+                  
+                  {view === "url" && (
+                    <div className="flex justify-center items-center">
+                      <URLInput key={`url-${walletAddress}`} />
+                    </div>
+                  )}
+                  
+                  {view === "chat" && (
+                    <div className="absolute top-16 left-0 right-0 bottom-0 lg:left-20">
+                      <iframe 
+                        src="https://librechat-production-97e2.up.railway.app/c/new" 
+                        className="w-full h-full border-0"
+                        title="LibreChat"
+                        allow="microphone; camera; geolocation"
+                        sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
                       />
-                    </>
+                    </div>
                   )}
-                  {searchParams.view === "tokens" && (
+                  
+                  {view === "analysis" && (
+                    <div className="flex justify-center items-center">
+                      <Analysis key={`analysis-${walletAddress}`} />
+                    </div>
+                  )}
+                  
+                  {view === "nfts" && (
+                    <NFTTable
+                      key={`table-${walletAddress}`}
+                      walletAddress={walletAddress}
+                      nftDataArray={nonFungibleTokens}
+                      searchParams={awaitedSearchParams}
+                    />
+                  )}
+                  
+                  {view === "portfolio" && (
+                    <PortfolioView
+                      key={`portfolio-${walletAddress}`}
+                      walletAddress={walletAddress}
+                      searchParams={awaitedSearchParams.toString()}
+                    />
+                  )}
+                  
+                  {view === "tokens" && (
                     <>
-                      {/* Token Metrics */}
-                      <TokenMetrics fungibleTokens={fungibleTokens} />
-
-                      {/* Tokens List */}
+                      <TokenMetrics 
+                        key={`token-metrics-${walletAddress}`}
+                        fungibleTokens={fungibleTokens} 
+                      />
                       <TokensList
+                        key={`token-list-${walletAddress}`}
                         tokens={fungibleTokens}
-                        searchParams={searchParams.toString()}
-                        walletAddress={params.walletAddress}
+                        searchParams={awaitedSearchParams.toString()}
+                        walletAddress={walletAddress}
                       />
                     </>
                   )}
@@ -144,129 +210,57 @@ const PortfolioPage = async ({ searchParams, params }: PortfolioPageProps) => {
 
 const getAllAssets = async (walletAddress: string) => {
   const url = process.env.NEXT_PUBLIC_HELIUS_RPC_URL;
+  const apiKey = process.env.NEXT_PUBLIC_HELIUS_API_KEY;
 
-  if (!url) {
-    throw new Error("NEXT_PUBLIC_HELIUS_RPC_URL is not set");
+  if (!url || !apiKey) {
+    throw new Error("Helius configuration is not properly set");
   }
 
   try {
-    // Separate requests for fungible and non-fungible tokens
-    const [fungibleResponse, nftResponse] = await Promise.all([
-      fetch(url, {
-        cache: 'no-store',
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: "fungible-tokens",
-          method: "searchAssets",
-          params: {
-            ownerAddress: walletAddress,
-            tokenType: "fungible",
-            displayOptions: {
-              showNativeBalance: true,
-            },
-          },
-        }),
-      }),
-      fetch(url, {
-        cache: 'no-store',
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          jsonrpc: "2.0",
-          id: "nfts",
-          method: "searchAssets",
-          params: {
-            ownerAddress: walletAddress,
-            tokenType: "nonFungible",
-            displayOptions: {
-              showCollectionMetadata: true,
-            },
-          },
-        }),
-      }),
-    ]);
+    // Add timestamp to prevent caching
+    const timestamp = Date.now();
+    const baseUrl = `${url}/?api-key=${apiKey}`;
+    
+    // Prepare request body for fungible tokens
+    const fungibleRequestBody = {
+      jsonrpc: "2.0",
+      id: "my-id",
+      method: "getAssetsByOwner",
+      params: {
+        ownerAddress: walletAddress,
+        limit: 100,
+        sortBy: {
+          sortBy: "id",
+          sortDirection: "desc"
+        }
+      }
+    };
 
-    const [fungibleData, nftData] = await Promise.all([
-      fungibleResponse.json(),
-      nftResponse.json(),
-    ]);
+    const fungibleResponse = await fetch(`${baseUrl}&t=${timestamp}`, {
+      cache: 'no-store',
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(fungibleRequestBody),
+    });
 
-    // Debug log the response structure
-    console.log("Fungible Data:", fungibleData);
-    console.log("NFT Data:", nftData);
+    if (!fungibleResponse.ok) {
+      throw new Error('Failed to fetch data from Helius API');
+    }
 
-    // Initialize empty arrays for both token types
+    const fungibleData = await fungibleResponse.json();
+
     let fungibleTokens: FungibleToken[] = [];
-    let nonFungibleTokens: NonFungibleToken[] = [];
 
-    // Process fungible tokens if they exist
     if (fungibleData?.result?.items) {
       fungibleTokens = fungibleData.result.items.filter(
         (item): item is FungibleToken =>
           item.interface === "FungibleToken" || item.interface === "FungibleAsset",
       );
-
-      // Hardcoding the image for USDC
-      fungibleTokens = fungibleTokens.map((item) => {
-        if (item.id === "EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v") {
-          return {
-            ...item,
-            content: {
-              ...item.content,
-              files: [
-                {
-                  uri: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png",
-                  cdn_uri: "",
-                  mime: "image/png",
-                },
-              ],
-              links: {
-                image:
-                  "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v/logo.png",
-              },
-            },
-          };
-        } else if (item.id === "bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1") {
-          return {
-            ...item,
-            content: {
-              ...item.content,
-              files: [
-                {
-                  uri: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1/logo.png",
-                  cdn_uri: "",
-                  mime: "image/png",
-                },
-              ],
-              links: {
-                image:
-                  "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/bSo13r4TkiE4KumL71LsHTPpL2euBYLFx6h9HP3piy1/logo.png",
-              },
-            },
-          };
-        }
-        return item;
-      });
     }
 
-    // Process non-fungible tokens if they exist
-    if (nftData?.result?.items) {
-      nonFungibleTokens = nftData.result.items.filter(
-        (item): item is NonFungibleToken =>
-          !["FungibleToken", "FungibleAsset"].includes(item.interface),
-      );
-    }
-
-    // Calculate SOL balance from lamports (with safety check)
     const solBalance = fungibleData.result?.nativeBalance?.lamports || 0;
-
-    // Create SOL token object if there's a balance
     if (solBalance > 0) {
       const solToken = {
         interface: "FungibleAsset",
@@ -288,8 +282,7 @@ const getAllAssets = async (walletAddress: string) => {
             token_standard: "Native Token",
           },
           links: {
-            image:
-              "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
+            image: "https://raw.githubusercontent.com/solana-labs/token-list/main/assets/mainnet/So11111111111111111111111111111111111111112/logo.png",
           },
         },
         authorities: [],
@@ -318,7 +311,7 @@ const getAllAssets = async (walletAddress: string) => {
           delegated: false,
           delegate: null,
           ownership_model: "token",
-          owner: nonFungibleTokens[0]?.ownership?.owner,
+          owner: walletAddress,
         },
         supply: null,
         mutable: true,
@@ -340,15 +333,34 @@ const getAllAssets = async (walletAddress: string) => {
       fungibleTokens.push(solToken);
     }
 
-    return { fungibleTokens, nonFungibleTokens };
+    return { 
+      fungibleTokens, 
+      nonFungibleTokens: [] // Return empty array for NFTs
+    };
   } catch (error) {
-    console.error("Error in getAllAssets:", error);
-    // Return empty arrays in case of error
+    console.error('Helius API Error:', {
+      error,
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
     return {
       fungibleTokens: [],
       nonFungibleTokens: []
     };
   }
 };
+
+// Generate metadata using awaited params
+export async function generateMetadata({
+  params,
+}: {
+  params: Props;
+}): Promise<Metadata> {
+  const { walletAddress } = await getParams(params);
+  return {
+    title: `Portfolio - ${walletAddress}`,
+    description: `View portfolio details for wallet ${walletAddress}`,
+  };
+}
 
 export default PortfolioPage;

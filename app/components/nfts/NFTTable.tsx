@@ -1,200 +1,466 @@
-"use client";
+'use client';
 
-import React, { useState, useEffect } from "react";
-import { usePathname, useSearchParams, useRouter } from "next/navigation";
-
+import React, { useEffect, useRef, useState } from "react";
+import { useStore } from "@/app/store/useStore";
+import OFactTableView from "./OFactTableView";
 import { NonFungibleToken } from "@/app/types";
-import { NFTCard } from "@/app/components";
-import NFTTableView from "./NFTTableView";
+import { Loader2, Clock, Coins, TrendingUp, DollarSign, Award, BarChart4 } from "lucide-react";
 
 interface NFTTableProps {
   walletAddress: string;
-  nftDataArray: NonFungibleToken[];
 }
 
-const NFTTable = ({ walletAddress, nftDataArray }: NFTTableProps) => {
-  const router = useRouter();
-  const pathname = usePathname();
-  const searchParams = useSearchParams();
-  const collectionFilter = searchParams.get("collection");
-  const typeFilter = searchParams.get("type");
-  const symbolFilter = searchParams.get("symbol");
+interface NFTCounts {
+  ofact: number;
+  afact: number;
+}
 
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const itemsPerPage = 10;
-  const [currentPage, setCurrentPage] = useState(1);
-  const [filteredNFTs, setFilteredNFTs] = useState<NonFungibleToken[]>([]);
+// Define earnings interface for NFTs
+interface NFTEarnings {
+  totalRevenue: number;
+  dailyRevenue: number;
+  weeklyRevenue: number;
+  monthlyRevenue: number;
+  allTimeRevenue: number;
+  lastUpdated: string;
+}
 
-  const categorizeNFT = (nft: NonFungibleToken) => {
-    if (nft.compression && nft.compression.compressed) return "CompressedNFT";
-    if (nft.inscription) return "Inscription";
-    if (nft.spl20) return "SPL20";
-    if (nft.interface === "ProgrammableNFT") return "ProgrammableNFT";
-    return "StandardNFT";
+const NFTTable = ({ walletAddress }: NFTTableProps) => {
+  const isInitialMount = useRef(true);
+  const { currentView, setView } = useStore();
+  const [nftCounts, setNftCounts] = useState<NFTCounts>({ ofact: 0, afact: 0 });
+  const [loading, setLoading] = useState(true);
+  const [miningCapacity, setMiningCapacity] = useState(85); // Default mining capacity (percentage)
+  const [remainingCapacity, setRemainingCapacity] = useState<number>(15);
+  const [loadingCapacity, setLoadingCapacity] = useState(true);
+  const [recentActivityCount, setRecentActivityCount] = useState(0);
+  
+  // Add state for selected NFT and earnings display
+  const [selectedNFT, setSelectedNFT] = useState<{id: string, type: 'ofact' | 'afact'} | null>(null);
+  const [earningsData, setEarningsData] = useState<NFTEarnings | null>(null);
+  const [loadingEarnings, setLoadingEarnings] = useState(false);
+  
+  // Mining capacity constants
+  const MAX_MINING_CAPACITY = 100; // Maximum capacity value
+
+  const fetchNFTCounts = async () => {
+    if (!walletAddress) return;
+
+    const rpcUrl = process.env.NEXT_PUBLIC_HELIUS_RPC_URL;
+    const apiKey = process.env.NEXT_PUBLIC_HELIUS_API_KEY;
+    
+    if (!rpcUrl || !apiKey) return;
+
+    try {
+      const response = await fetch(`${rpcUrl}/?api-key=${apiKey}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 'my-id',
+          method: 'getAssetsByOwner',
+          params: {
+            ownerAddress: walletAddress,
+            page: 1,
+            limit: 1000,
+            sortBy: {
+              sortBy: "created",
+              sortDirection: "desc"
+            }
+          }
+        })
+      });
+
+      const result = await response.json();
+      
+      if (result?.result?.items) {
+        const allNFTs: NonFungibleToken[] = result.result.items;
+        
+        // Count all NFTs by type
+        const counts = {
+          ofact: allNFTs.filter(nft => 
+            (nft.content?.metadata?.symbol || '').toLowerCase().includes('ofact')
+          ).length,
+          afact: allNFTs.filter(nft => 
+            (nft.content?.metadata?.symbol || '').toLowerCase().includes('afact')
+          ).length
+        };
+        setNftCounts(counts);
+        
+        // Count recent activity (NFTs from the last week)
+        const oneWeekAgo = new Date();
+        oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+        
+        const recentNFTs = allNFTs.filter(nft => {
+          const attributeMintDate = nft.content?.metadata?.attributes?.find(attr => attr.trait_type === 'Mint Date')?.value;
+          const attributeCreationDate = nft.content?.metadata?.attributes?.find(attr => attr.trait_type === 'Creation Date')?.value;
+          const lifecycleMintDate = nft.lifecycle?.minted?.timestamp;
+          const tokenMintDate = nft.tokenInfo?.mintTimestamp;
+          
+          const dateStr = attributeMintDate || attributeCreationDate || lifecycleMintDate || tokenMintDate;
+          if (!dateStr) return false;
+          
+          const nftDate = new Date(dateStr);
+          return !isNaN(nftDate.getTime()) && nftDate.getTime() >= oneWeekAgo.getTime();
+        });
+        
+        setRecentActivityCount(recentNFTs.length);
+      }
+    } catch (error) {
+      console.error('Error fetching NFT counts:', error);
+    } finally {
+      setLoading(false);
+    }
   };
+  
+  // Simulate fetching mining capacity
+  const fetchMiningCapacity = async () => {
+    setLoadingCapacity(true);
+    try {
+      // This would normally be an API call to get current mining capacity
+      // For demo purposes, we'll use a simulated value
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Randomize capacity between 50-95% for demonstration
+      const capacity = Math.floor(Math.random() * 46) + 50;
+      setMiningCapacity(capacity);
+      setRemainingCapacity(MAX_MINING_CAPACITY - capacity);
+    } catch (error) {
+      console.error('Error fetching mining capacity:', error);
+    } finally {
+      setLoadingCapacity(false);
+    }
+  };
+
+  // New function to fetch earnings data for a selected NFT
+  const fetchNFTEarnings = async (nftId: string, nftType: 'ofact' | 'afact') => {
+    setLoadingEarnings(true);
+    
+    try {
+      // Simulate API call delay
+      await new Promise(resolve => setTimeout(resolve, 800));
+      
+      // For demo purposes, generate random earnings data
+      // In a real app, this would make an API call to get actual earnings data
+      let baseRevenue = 0;
+      
+      if (nftType === 'ofact') {
+        // OFACTs typically earn based on child AFACTs
+        baseRevenue = Math.random() * 200 + 100; // $100-$300 base revenue
+      } else {
+        // AFACTs earn based on views or usage
+        baseRevenue = Math.random() * 50 + 10; // $10-$60 base revenue
+      }
+      
+      // Calculate different time period revenues
+      const dailyRevenue = (baseRevenue / 30).toFixed(2);
+      const weeklyRevenue = (baseRevenue / 4).toFixed(2);
+      const monthlyRevenue = baseRevenue.toFixed(2);
+      const allTimeRevenue = (baseRevenue * (1 + Math.random() * 2)).toFixed(2);
+      
+      // For OFACTs that haven't been mined yet, earnings should be zero
+      if (nftType === 'ofact' && nftId.includes('open_request')) {
+        setEarningsData({
+          totalRevenue: 0,
+          dailyRevenue: 0,
+          weeklyRevenue: 0,
+          monthlyRevenue: 0,
+          allTimeRevenue: 0,
+          lastUpdated: new Date().toLocaleString()
+        });
+      } else {
+        setEarningsData({
+          totalRevenue: parseFloat(allTimeRevenue),
+          dailyRevenue: parseFloat(dailyRevenue),
+          weeklyRevenue: parseFloat(weeklyRevenue),
+          monthlyRevenue: parseFloat(monthlyRevenue),
+          allTimeRevenue: parseFloat(allTimeRevenue),
+          lastUpdated: new Date().toLocaleString()
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching NFT earnings:', error);
+      setEarningsData(null);
+    } finally {
+      setLoadingEarnings(false);
+    }
+  };
+
+  // Handle NFT selection from the OFactTableView
+  const handleNFTSelected = (nftId: string, nftType: 'ofact' | 'afact') => {
+    setSelectedNFT({ id: nftId, type: nftType });
+    fetchNFTEarnings(nftId, nftType);
+  };
+
+  // Simulate real-time capacity changes with a heartbeat effect
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    
+    if (!loadingCapacity) {
+      // Create heartbeat effect by making small variations to the capacity value
+      interval = setInterval(() => {
+        // Small random fluctuation (±2%)
+        const fluctuation = (Math.random() * 4) - 2;
+        
+        // Ensure capacity stays within bounds and changes are subtle
+        const baseCapacity = miningCapacity;
+        const newCapacity = Math.min(MAX_MINING_CAPACITY, Math.max(0, baseCapacity + fluctuation));
+        
+        setMiningCapacity(newCapacity);
+        setRemainingCapacity(MAX_MINING_CAPACITY - newCapacity);
+      }, 2000); // Update every 2 seconds for heartbeat effect
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [loadingCapacity, miningCapacity]);
 
   useEffect(() => {
-    let filtered = nftDataArray.map((nft) => ({
-      ...nft,
-      type: categorizeNFT(nft),
-    }));
+    fetchNFTCounts();
+    fetchMiningCapacity();
+  }, [walletAddress]);
 
-    const searchFilter = searchParams.get("search");
-    
-    if (searchFilter) {
-      filtered = filtered.filter((nft) => {
-        const description = nft.content.metadata?.description?.toLowerCase() || '';
-        return description.includes(searchFilter.toLowerCase());
-      });
-    }
-
-    if (collectionFilter) {
-      filtered = filtered.filter(
-        (nft) =>
-          nft.grouping.find((g) => g.group_key === "collection")
-            ?.group_value === collectionFilter,
-      );
-    }
-
-    if (typeFilter) {
-      filtered = filtered.filter((nft) => nft.type === typeFilter);
-    }
-
-    if (symbolFilter) {
-      filtered = filtered.filter(
-        (nft) => nft.content.metadata?.symbol === symbolFilter
-      );
-    }
-
-    setFilteredNFTs(filtered);
-    setCurrentPage(1);
-  }, [nftDataArray, collectionFilter, typeFilter, symbolFilter, searchParams]);
-
-  const clearFilters = () => {
-    const newSearchParams = new URLSearchParams(searchParams);
-    newSearchParams.delete("collection");
-    newSearchParams.delete("type");
-    newSearchParams.delete("symbol");
-    newSearchParams.delete("search");
-    const newURL = `${pathname}?${newSearchParams.toString()}`;
-    router.push(newURL);
-  };
-
-  const totalItems = filteredNFTs.length;
-  const totalPages = Math.ceil(totalItems / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredNFTs.slice(indexOfFirstItem, indexOfLastItem);
-  const MemoizedNFTCard = React.memo(NFTCard);
-
-  const paginate = (pageNumber: number) => setCurrentPage(pageNumber);
+  // Cleanup when changing views
+  useEffect(() => {
+    return () => {
+      if (currentView !== 'nfts') {
+        setView('nfts');
+      }
+    };
+  }, [currentView, setView]);
 
   return (
-    <div className="flex flex-col items-center justify-center">
-      {/* View Toggle */}
-      <div className="mb-4 flex w-full justify-end px-4">
-        <div className="flex gap-2 rounded-lg bg-gray-800/10 p-1 ring-1 ring-white/10">
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`flex items-center gap-1 rounded-md px-3 py-1 ${
-              viewMode === 'grid' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            {/* Grid Icon */}
-            <svg 
-              className="h-4 w-4" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2"
-            >
-              <rect x="3" y="3" width="7" height="7" />
-              <rect x="14" y="3" width="7" height="7" />
-              <rect x="3" y="14" width="7" height="7" />
-              <rect x="14" y="14" width="7" height="7" />
-            </svg>
-            Grid
-          </button>
-          <button
-            onClick={() => setViewMode('table')}
-            className={`flex items-center gap-1 rounded-md px-3 py-1 ${
-              viewMode === 'table' ? 'bg-primary text-white' : 'text-gray-400 hover:text-white'
-            }`}
-          >
-            {/* Table Icon */}
-            <svg 
-              className="h-4 w-4" 
-              viewBox="0 0 24 24" 
-              fill="none" 
-              stroke="currentColor" 
-              strokeWidth="2"
-            >
-              <path d="M3 10h18M3 14h18M3 18h18M3 6h18" />
-            </svg>
-            Table
-          </button>
+    <div className="flex flex-col items-center justify-center space-y-4 w-full">
+      {/* Top Row: Mining Capacity and Earnings Information */}
+      <div className="w-full grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+        {/* Mining Capacity Gauge - This stays the same */}
+        <div className="bg-gray-800/50 p-4 rounded-lg ring-1 ring-white/10 md:col-span-2">
+          <div className="flex justify-between items-center mb-3">
+            <h3 className="text-sm font-medium text-gray-400">Mining Capacity</h3>
+            {loadingCapacity ? (
+              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+            ) : (
+              <div className="flex items-center">
+                <span className="inline-block w-2 h-2 rounded-full bg-green-500 mr-1.5 animate-pulse"></span>
+                <span className="text-sm font-medium text-gray-400">
+                  {Math.round(remainingCapacity)} units available
+                </span>
+              </div>
+            )}
+          </div>
+          
+          <div className="flex items-center justify-between">
+            {/* Circle gauge */}
+            <div className="relative">
+              <svg width="140" height="140" className="transform -rotate-90">
+                {/* Background circle */}
+                <circle 
+                  cx="70" 
+                  cy="70" 
+                  r="54" 
+                  stroke="rgba(255,255,255,0.1)" 
+                  strokeWidth="10" 
+                  fill="none" 
+                />
+                {/* Progress circle */}
+                <circle 
+                  cx="70" 
+                  cy="70" 
+                  r="54" 
+                  stroke={miningCapacity >= 80 ? "rgb(34, 197, 94)" : 
+                          miningCapacity >= 60 ? "rgb(74, 222, 128)" : 
+                          miningCapacity >= 40 ? "rgb(250, 204, 21)" : 
+                          miningCapacity >= 20 ? "rgb(249, 115, 22)" : 
+                          "rgb(239, 68, 68)"}
+                  strokeWidth="10" 
+                  fill="none" 
+                  strokeLinecap="round"
+                  strokeDasharray={2 * Math.PI * 54}
+                  strokeDashoffset={2 * Math.PI * 54 - (miningCapacity / 100) * 2 * Math.PI * 54}
+                  className="transition-all duration-700 ease-out"
+                />
+                
+                {/* Animated point on the progress circle */}
+                <circle 
+                  cx={70 + 54 * Math.cos(((miningCapacity / 100) * 360 - 90) * (Math.PI / 180))}
+                  cy={70 + 54 * Math.sin(((miningCapacity / 100) * 360 - 90) * (Math.PI / 180))}
+                  r="3" 
+                  fill="white"
+                  className="animate-pulse"
+                />
+              </svg>
+              
+              {/* Digital display in center */}
+              <div className="absolute inset-0 flex flex-col items-center justify-center">
+                <div className={`text-3xl font-bold ${
+                  miningCapacity >= 80 ? "text-green-500" : 
+                  miningCapacity >= 60 ? "text-green-400" : 
+                  miningCapacity >= 40 ? "text-yellow-400" : 
+                  miningCapacity >= 20 ? "text-orange-500" : 
+                  "text-red-500"
+                } font-mono tracking-tight`}>
+                  {miningCapacity.toFixed(1)}
+                </div>
+                <div className="text-xs text-gray-400">CAPACITY</div>
+              </div>
+            </div>
+            
+            {/* Stats */}
+            <div className="flex flex-col justify-between py-1 ml-3 h-32">
+              <div className="text-sm text-gray-300 mb-2 border-b border-gray-700 pb-2">
+                Status: <span className={
+                  miningCapacity >= 80 ? "text-green-500" : 
+                  miningCapacity >= 60 ? "text-green-400" : 
+                  miningCapacity >= 40 ? "text-yellow-400" : 
+                  miningCapacity >= 20 ? "text-orange-500" : 
+                  "text-red-500"
+                }>{
+                  miningCapacity >= 80 ? "Optimal" : 
+                  miningCapacity >= 60 ? "Good" : 
+                  miningCapacity >= 40 ? "Moderate" : 
+                  miningCapacity >= 20 ? "Low" : 
+                  "Critical"
+                }</span>
+              </div>
+              
+              {/* System Indicators with digital blinking effect */}
+              <div className="space-y-2 font-mono text-xs">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-blue-500 animate-ping mr-1.5 opacity-75"></span>
+                    <span className="text-gray-400">HASH</span>
+                  </div>
+                  <span className="text-blue-400">142 MH/s</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse mr-1.5"></span>
+                    <span className="text-gray-400">NODES</span>
+                  </div>
+                  <span className="text-purple-400">12</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <span className="inline-block w-1.5 h-1.5 rounded-full bg-amber-500 mr-1.5 animate-pulse"></span>
+                    <span className="text-gray-400">LOAD</span>
+                  </div>
+                  <span className="text-amber-400">68%</span>
+                </div>
+              </div>
+              
+              <div className="text-xs text-gray-500 pt-2 border-t border-gray-700/50">
+                Last updated: <span className="text-gray-400">just now</span>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        {/* Right Column - Either shows NFT earnings or general stats */}
+        <div className="space-y-4">
+          {selectedNFT && earningsData ? (
+            // NFT Earnings Display when an NFT is selected
+            <>
+              {/* Daily Revenue */}
+              <div className="bg-gray-800/50 p-4 rounded-lg ring-1 ring-white/10">
+                <div className="flex justify-between items-center">
+                  <h3 className="text-sm font-medium text-gray-400">
+                    {selectedNFT.type === 'ofact' ? 'OFACT' : 'AFACT'} Earnings
+                  </h3>
+                  {loadingEarnings ? (
+                    <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                  ) : (
+                    <div className="text-xs text-gray-500">
+                      ID: {selectedNFT.id.slice(0, 8)}...
+                    </div>
+                  )}
+                </div>
+                <div className="mt-3 flex justify-between items-center">
+                  <div className="flex items-center">
+                    <Coins className="h-5 w-5 text-yellow-500 mr-2" />
+                    <span className="text-sm text-gray-300">Daily Revenue</span>
+                  </div>
+                  <p className="text-xl font-semibold text-white">
+                    ${earningsData.dailyRevenue.toFixed(2)}
+                  </p>
+                </div>
+              </div>
+              
+              {/* Revenue Stats */}
+              <div className="bg-gray-800/50 p-4 rounded-lg ring-1 ring-white/10">
+                <h3 className="text-sm font-medium text-gray-400 mb-3">Revenue Statistics</h3>
+                
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center">
+                      <Clock className="h-4 w-4 text-blue-400 mr-2" />
+                      <span className="text-xs text-gray-300">Weekly</span>
+                    </div>
+                    <p className="text-sm font-medium text-white">
+                      ${earningsData.weeklyRevenue.toFixed(2)}
+                    </p>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center">
+                      <BarChart4 className="h-4 w-4 text-purple-400 mr-2" />
+                      <span className="text-xs text-gray-300">Monthly</span>
+                    </div>
+                    <p className="text-sm font-medium text-white">
+                      ${earningsData.monthlyRevenue.toFixed(2)}
+                    </p>
+                  </div>
+                  
+                  <div className="flex justify-between items-center">
+                    <div className="flex items-center">
+                      <Award className="h-4 w-4 text-amber-400 mr-2" />
+                      <span className="text-xs text-gray-300">All Time</span>
+                    </div>
+                    <p className="text-sm font-medium text-white">
+                      ${earningsData.allTimeRevenue.toFixed(2)}
+                    </p>
+                  </div>
+                </div>
+                
+                <div className="mt-3 pt-3 border-t border-gray-700/50 text-xs text-gray-500">
+                  Last updated: {earningsData.lastUpdated}
+                </div>
+              </div>
+            </>
+          ) : (
+            // Default display when no NFT is selected (same as original)
+            <>
+              {/* Recent Activity */}
+              <div className="bg-gray-800/50 p-4 rounded-lg ring-1 ring-white/10">
+                <h3 className="text-sm font-medium text-gray-400">Recent Activity (7 days)</h3>
+                <div className="flex justify-between items-center mt-2">
+                  <div className="flex items-center">
+                    <div className="rounded-full w-3 h-3 bg-blue-500 mr-2"></div>
+                    <span className="text-sm text-gray-300">Facts Created</span>
+                  </div>
+                  <p className="text-xl font-semibold text-white">
+                    {loading ? '...' : recentActivityCount}
+                  </p>
+                </div>
+              </div>
+              
+              {/* OFact Stats */}
+              <div className="bg-gray-800/50 p-4 rounded-lg ring-1 ring-white/10">
+                <h3 className="text-sm font-medium text-gray-400">Active OFacts</h3>
+                <p className="mt-2 text-3xl font-semibold text-white">
+                  {loading ? '...' : nftCounts.ofact}
+                </p>
+              </div>
+            </>
+          )}
         </div>
       </div>
 
-      {currentItems.length > 0 ? (
-        <>
-          {viewMode === 'grid' ? (
-            <div className="flex w-full flex-wrap justify-center gap-3">
-              {currentItems.map((nftData) => (
-                <MemoizedNFTCard
-                  key={nftData.id}
-                  nftData={nftData}
-                  walletAddress={walletAddress}
-                  searchParams={searchParams.toString()}
-                />
-              ))}
-            </div>
-          ) : (
-            <NFTTableView 
-              nfts={currentItems}
-              walletAddress={walletAddress}
-              searchParams={searchParams.toString()}
-            />
-          )}
-
-          {/* Pagination */}
-          <div className="mb-4 mt-14 flex justify-center">
-            <div className="join flex items-center">
-              <button
-                onClick={() => paginate(currentPage - 1)}
-                className="h-8 w-8 rounded-full bg-indigo-100/5 bg-opacity-50 text-white ring-1 ring-inset ring-white/10 disabled:cursor-not-allowed disabled:bg-neutral"
-                disabled={currentPage === 1}
-              >
-                «
-              </button>
-
-              <span className="mx-6 flex h-8 w-20 items-center justify-center rounded-full bg-indigo-100/5 text-sm font-semibold leading-6 text-white ring-1 ring-inset ring-white/10 transition duration-200 ease-in-out">
-                Page {currentPage}
-              </span>
-
-              <button
-                onClick={() => paginate(currentPage + 1)}
-                className="h-8 w-8 rounded-full bg-indigo-100/5 bg-opacity-50 text-white ring-1 ring-inset ring-white/10 disabled:cursor-not-allowed disabled:bg-neutral"
-                disabled={currentPage === totalPages}
-              >
-                »
-              </button>
-            </div>
-          </div>
-        </>
-      ) : (
-        <div className="flex h-full flex-col items-center justify-center p-10 text-center text-lg font-semibold">
-          <h1 className="text-2xl">No NFTs Found</h1>
-          {(collectionFilter || typeFilter || symbolFilter) && (
-            <button
-              className="btn btn-neutral m-5 bg-opacity-60 text-base text-white"
-              onClick={clearFilters}
-            >
-              Clear Filters
-            </button>
-          )}
-        </div>
-      )}
+      {/* Fact Mining Dashboard */}
+      <OFactTableView 
+        walletAddress={walletAddress} 
+        onNFTSelected={handleNFTSelected} 
+      />
     </div>
   );
 };

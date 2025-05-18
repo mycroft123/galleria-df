@@ -2,7 +2,6 @@
 @tailwind components;
 @tailwind utilities;
 
-
 @layer base {
   html {
     @apply bg-[#222222];
@@ -11,8 +10,8 @@
 
 :root {
   --foreground-rgb: 255, 255, 255;
-  --background-start-rgb: 214, 219, 220;
-  --background-end-rgb: 255, 255, 255;
+  --background-start-rgb: 34, 34, 34;
+  --background-end-rgb: 34, 34, 34;
 }
 
 body {
@@ -31,4 +30,9 @@ body {
 .link:focus .arrow-symbol path:last-child,
 .link:hover .arrow-symbol path:last-child {
   stroke-dashoffset: 20;
+}
+
+/* Maintaining similar style to original orange gradient */
+.bg-radial-gradient {
+  background-image: radial-gradient(73.15% 70.06% at 50% -10.9%, rgba(67, 204, 174, 0.70) 0%, #222222 100%);
 }

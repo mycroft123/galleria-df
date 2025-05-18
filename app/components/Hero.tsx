@@ -34,21 +34,20 @@ const Hero = () => {
       </a>*/}
 
       <div className="text-center">
-  <div className="flex items-center justify-center">
-    <h1 className="bg-gradient-to-r from-white via-accent to-primary bg-clip-text text-5xl font-bold tracking-tighter text-transparent sm:text-7xl/none">
-      DeFacts
-    </h1>
-    <img 
-      src="/helius-logos/desktop-logo.svg" 
-      alt="Company Logo" 
-      style={{ maxHeight: "65px", marginLeft: "15px" }} 
-    />
-  </div>
+        <div className="flex items-center justify-center">
+          <h1 className="bg-gradient-to-r from-white via-white to-emerald-100 bg-clip-text text-5xl font-bold tracking-tighter text-transparent sm:text-7xl/none">
+            DeFacts
+          </h1>
+          <img 
+            src="/helius-logos/desktop-logo.svg" 
+            alt="Company Logo" 
+            style={{ maxHeight: "65px", marginLeft: "15px" }} 
+          />
+        </div>
 
-  <p className="mt-6 text-base leading-8 text-gray-300 sm:text-lg">
-    Introducing the DeFacts Browser <br /> The fastest way to query the DeFacts Framework
-  </p>
-
+        <p className="mt-6 text-base leading-8 text-gray-300 sm:text-lg">
+          Introducing the DeFacts Browser <br /> The fastest way to query the DeFacts Framework
+        </p>
 
         <div className="mt-10 flex items-center justify-center gap-x-6">
           <WalletInput source={"hero"} />
@@ -60,7 +59,7 @@ const Hero = () => {
             href="https://www.knowledgecoin.io/"
             target="_blank"
             rel="noopener noreferrer"
-            className="group inline-flex items-center gap-x-3 rounded-full bg-indigo-100/5 px-3 py-1 text-sm font-semibold leading-6 text-accent ring-1 ring-inset ring-accent/10 transition duration-200 ease-in-out hover:ring-accent/30"
+            className="group inline-flex items-center gap-x-3 rounded-full bg-emerald-100/5 px-3 py-1 text-sm font-semibold leading-6 text-emerald-400 ring-1 ring-inset ring-emerald-400/10 transition duration-200 ease-in-out hover:ring-emerald-400/30"
           >
             <svg
               xmlns="http://www.w3.org/2000/svg"
@@ -111,7 +110,7 @@ const DASHyperLink = ({ className }: { className?: string }) => {
           target="_blank"
           rel="noopener noreferrer"
           className={classNames(
-            "flex h-[30px] items-center rounded-full border border-white border-opacity-20 bg-opacity-25 px-2 transition-all duration-200 ease-in-out hover:bg-black/25 group-hover:border-opacity-60 group-hover:bg-opacity-75",
+            "flex h-[30px] items-center rounded-full border border-white border-opacity-20 bg-opacity-25 px-2 transition-all duration-200 ease-in-out hover:bg-emerald-700/25 group-hover:border-opacity-60 group-hover:bg-opacity-75",
             className,
           )}
         >

@@ -14,10 +14,30 @@ const config: Config = {
       },
       backgroundImage: {
         "radial-gradient":
-          "radial-gradient(73.15% 70.06% at 50% -10.9%, rgba(228, 85, 46, 0.70) 0%, #222 100%)",
+          "radial-gradient(73.15% 70.06% at 50% -10.9%, #43ccae 0%, #3db399 100%)",
       },
       boxShadow: {
         glow: "0 0 5px 2px rgba(238, 199, 188, 0.6)", // This is a blue glow
+      },
+      animation: {
+        'scanner': 'scanner 4s linear infinite',
+        'heartbeat': 'heartbeat 1.5s ease infinite',
+        'slow-pulse': 'pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+      },
+      keyframes: {
+        scanner: {
+          '0%': { left: '0%' },
+          '50%': { left: '100%' },
+          '50.001%': { left: '100%' },
+          '100%': { left: '0%' }
+        },
+        heartbeat: {
+          '0%': { transform: 'scale(1)', opacity: '1' },
+          '25%': { transform: 'scale(1.1)', opacity: '0.8' },
+          '40%': { transform: 'scale(1)', opacity: '1' },
+          '60%': { transform: 'scale(1.1)', opacity: '0.8' },
+          '100%': { transform: 'scale(1)', opacity: '1' }
+        },
       },
     },
   },
@@ -55,4 +75,5 @@ const config: Config = {
     darkTheme: false,
   },
 };
+
 export default config;

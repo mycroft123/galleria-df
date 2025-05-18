@@ -1,325 +1,334 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from 'react';
+import { Connection, PublicKey } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID } from '@solana/spl-token';
+import { RefreshCw, Loader2 } from 'lucide-react';
 
-interface PerplexityResponse {
-  success: boolean;
-  response?: string;
-  citations?: string[];
-  error?: string;
-  choices?: Array<{
-    message: {
-      content: string;
-    };
-  }>;
-}
+const DFCT_TOKEN_ADDRESS = '8mTDKt6gY1DatZDKbvMCdiw4AZRdCpUjxuRv4GRBg2Xn';
 
-const getApiUrl = () => {
-  // Check for local development environment
-  if (window.location.hostname === 'localhost') {
-    return "http://localhost:3002/api";
-  }
-  // Default to Vercel URL for all other cases
-  return "https://galleria-df-backend.vercel.app/api";  // Updated to use the main production URL
-};
+// Create Helius connection
+const connection = new Connection(
+  `${process.env.NEXT_PUBLIC_HELIUS_RPC_URL}/?api-key=${process.env.NEXT_PUBLIC_HELIUS_API_KEY}`
+);
 
-const API_URL = `${getApiUrl()}/ai-perplexity`;
+const PAIInput = () => {
+  const [isConnected, setIsConnected] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [publicKey, setPublicKey] = useState<string | null>(null);
+  const [tokenBalance, setTokenBalance] = useState<number | null>(null);
+  const [inputText, setInputText] = useState('');
 
-// Rest of your code remains the same...
-
-// Function to convert markdown to HTML
-const convertMarkdownToHtml = (markdown: string): string => {
-  // Handle bold text
-  let html = markdown.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  
-  // Handle italic text
-  html = html.replace(/\*(.*?)\*/g, '<em>$1</em>');
-  
-  // Handle code blocks
-  html = html.replace(/```([^`]+)```/g, '<pre><code>$1</code></pre>');
-  
-  // Handle inline code
-  html = html.replace(/`([^`]+)`/g, '<code>$1</code>');
-  
-  // Handle headings
-  html = html.replace(/^### (.*$)/gm, '<h3>$1</h3>');
-  html = html.replace(/^## (.*$)/gm, '<h2>$1</h2>');
-  html = html.replace(/^# (.*$)/gm, '<h1>$1</h1>');
-  
-  // Handle lists
-  html = html.replace(/^\s*[-*+]\s+(.*)/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>)/s, '<ul>$1</ul>');
-  
-  // Handle numbered lists
-  html = html.replace(/^\d+\.\s+(.*)/gm, '<li>$1</li>');
-  html = html.replace(/(<li>.*<\/li>)/s, '<ol>$1</ol>');
-  
-  // Handle paragraphs
-  html = html.split('\n\n').map(para => 
-    para.trim().startsWith('<') ? para : `<p>${para}</p>`
-  ).join('');
-  
-  return html;
-};
-
-const PAIInput: React.FC = () => {
-  const [question, setQuestion] = useState<string>("");
-  const [loading, setLoading] = useState<boolean>(false);
-  const [error, setError] = useState<string>("");
-  const [debug, setDebug] = useState<string>("");
-  const [response, setResponse] = useState<PerplexityResponse | null>(null);
-  const [activeTab, setActiveTab] = useState<'question' | 'results'>('question');
-  const [selectedSources, setSelectedSources] = useState<Set<number>>(new Set());
-
-  const defaultModel = "llama-3.1-sonar-small-128k-online";
-
-  const handleSourceToggle = (index: number) => {
-    setSelectedSources(prev => {
-      const newSet = new Set(prev);
-      if (newSet.has(index)) {
-        newSet.delete(index);
-      } else {
-        newSet.add(index);
-      }
-      return newSet;
-    });
-  };
-
-  const handleLogFacts = () => {
-    const selectedCitations = Array.from(selectedSources).map(index => 
-      response?.citations?.[index]
-    ).filter(Boolean);
-    
-    console.log('Logging facts from sources:', selectedCitations);
-  };
-
-  const fetchWithTimeout = async (url: string, options: RequestInit, timeout: number = 30000) => {
-    const controller = new AbortController();
-    const { signal } = controller;
-    
-    const timeoutPromise = new Promise((_, reject) => {
-      const timeoutId = setTimeout(() => {
-        controller.abort();
-        reject(new Error('Request timed out'));
-      }, timeout);
-
-      signal.addEventListener('abort', () => clearTimeout(timeoutId));
-    });
-
+  const fetchTokenBalance = async (walletAddress: string) => {
     try {
-      const fetchPromise = fetch(url, {
-        ...options,
-        signal,
+      console.log('Fetching balance for:', walletAddress);
+      
+      // Convert string address to PublicKey
+      const owner = new PublicKey(walletAddress);
+      
+      // Get all token accounts for this wallet using Helius RPC
+      const accounts = await connection.getParsedTokenAccountsByOwner(owner, {
+        programId: TOKEN_PROGRAM_ID
       });
 
-      const response = await Promise.race([fetchPromise, timeoutPromise]);
-      return response;
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        throw new Error('Request timed out');
-      }
-      throw error;
-    }
-  };
+      console.log('Found token accounts:', accounts.value.length);
 
-  const handleSubmitQuestion = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoading(true);
-    setError("");
-    setDebug("");
-    setResponse(null);
-    setSelectedSources(new Set());
-
-    try {
-      const requestBody = {
-        model: defaultModel,
-        messages: [
-          {
-            role: "system",
-            content: "Be precise and concise."
-          },
-          {
-            role: "user",
-            content: question
-          }
-        ],
-        temperature: 0.2,
-        top_p: 0.9,
-        search_domain_filter: ["perplexity.ai"],
-        return_images: false,
-        return_related_questions: false,
-        search_recency_filter: "month",
-        top_k: 0,
-        stream: false,
-        presence_penalty: 0,
-        frequency_penalty: 1
-      };
-
-      setDebug(`Requesting from Perplexity API\nRequest Body: ${JSON.stringify(requestBody, null, 2)}`);
-      
-      const response = await fetchWithTimeout(
-        API_URL,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-          },
-          body: JSON.stringify(requestBody),
-        },
-        30000
+      // Find our specific token account
+      const tokenAccount = accounts.value.find(
+        accountInfo => accountInfo.account.data.parsed.info.mint === DFCT_TOKEN_ADDRESS
       );
 
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.error || `HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      setDebug(prev => `${prev}\nResponse: ${JSON.stringify(data, null, 2)}`);
-
-      if (data.choices?.[0]?.message) {
-        setResponse({
-          success: true,
-          response: data.choices[0].message.content,
-          citations: data.citations || []
-        });
-        setActiveTab('results');
+      if (tokenAccount) {
+        console.log('Found DFCT token account:', tokenAccount.account.data.parsed.info.tokenAmount.uiAmount);
+        setTokenBalance(tokenAccount.account.data.parsed.info.tokenAmount.uiAmount);
       } else {
-        throw new Error("Invalid response format");
+        console.log('No DFCT token account found, setting balance to 0');
+        setTokenBalance(0);
       }
-    } catch (err) {
-      console.error("Error in handleSubmitQuestion:", err);
-      const errorMessage = err instanceof Error 
-        ? err.message 
-        : 'An unexpected error occurred';
-      setError(`Error fetching response: ${errorMessage}`);
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching token balance:', error);
+      setTokenBalance(null);
+      setError('Failed to fetch token balance');
     }
   };
 
+  const handleRefresh = async () => {
+    if (!publicKey || isRefreshing) return;
+    
+    setIsRefreshing(true);
+    try {
+      await fetchTokenBalance(publicKey);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
+
+  const handleInputChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setInputText(e.target.value);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!inputText.trim() || isProcessing) return;
+
+    try {
+      setIsProcessing(true);
+      // Here you would add your AI processing logic
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulated processing
+      setInputText('');
+    } catch (error) {
+      console.error('Error processing input:', error);
+      setError('Failed to process input');
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSubmit(e);
+    }
+  };
+
+  const checkIfWalletIsConnected = async () => {
+    try {
+      const provider = window.solana;
+      
+      if (!provider) {
+        setError('Please install Phantom wallet');
+        setIsLoading(false);
+        return;
+      }
+
+      // Clear any previous errors
+      setError(null);
+
+      try {
+        // Only try to eagerly connect if the wallet was previously connected
+        const resp = await provider.connect({ onlyIfTrusted: true });
+        const address = resp.publicKey.toString();
+        console.log('Wallet auto-connected:', address);
+        setIsConnected(true);
+        setPublicKey(address);
+        await fetchTokenBalance(address);
+      } catch (err) {
+        // This is expected if wallet wasn't previously connected
+        console.log('Wallet not previously connected:', err);
+        setIsConnected(false);
+        setPublicKey(null);
+      }
+    } catch (error) {
+      console.error('Error checking wallet connection:', error);
+      setError('Failed to check wallet connection');
+      setIsConnected(false);
+      setPublicKey(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleManualConnect = async () => {
+    try {
+      const provider = window.solana;
+      
+      if (!provider) {
+        setError('Please install Phantom wallet');
+        return;
+      }
+
+      // Clear any previous errors
+      setError(null);
+      setIsLoading(true);
+      
+      const resp = await provider.connect();
+      const address = resp.publicKey.toString();
+      setIsConnected(true);
+      setPublicKey(address);
+      await fetchTokenBalance(address);
+    } catch (error: any) {
+      console.error('Manual connection error:', error);
+      // Handle specific error cases
+      if (error.code === 4001) {
+        setError('Connection request was rejected');
+      } else if (error.message?.includes('User rejected')) {
+        setError('Connection request was rejected');
+      } else {
+        setError('Failed to connect wallet. Please try again.');
+      }
+      setIsConnected(false);
+      setPublicKey(null);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Initial setup and event listeners
+  useEffect(() => {
+    const provider = window.solana;
+    
+    if (provider) {
+      // Initial connection check
+      checkIfWalletIsConnected();
+
+      const handleConnect = async () => {
+        try {
+          if (provider.publicKey) {
+            const address = provider.publicKey.toString();
+            console.log('Wallet connected:', address);
+            setIsConnected(true);
+            setPublicKey(address);
+            await fetchTokenBalance(address);
+          }
+        } catch (error) {
+          console.error('Connect event error:', error);
+          setError('Failed to handle wallet connection');
+        }
+      };
+
+      const handleDisconnect = () => {
+        console.log('Wallet disconnected');
+        setIsConnected(false);
+        setPublicKey(null);
+        setTokenBalance(null);
+        setError(null); // Clear any previous errors
+      };
+
+      const handleAccountChange = async () => {
+        try {
+          if (provider.publicKey) {
+            const address = provider.publicKey.toString();
+            console.log('Account changed:', address);
+            setPublicKey(address);
+            await fetchTokenBalance(address);
+          } else {
+            setPublicKey(null);
+            setTokenBalance(null);
+          }
+        } catch (error) {
+          console.error('Account change error:', error);
+          setError('Failed to handle account change');
+        }
+      };
+
+      // Set up event listeners
+      provider.on('connect', handleConnect);
+      provider.on('disconnect', handleDisconnect);
+      provider.on('accountChanged', handleAccountChange);
+
+      return () => {
+        try {
+          provider.removeAllListeners();
+        } catch (error) {
+          console.error('Error removing listeners:', error);
+        }
+      };
+    } else {
+      setIsLoading(false);
+    }
+  }, []);
+
+  // Auto-refresh setup
+  useEffect(() => {
+    if (!isConnected || !publicKey) return;
+
+    const interval = setInterval(() => {
+      fetchTokenBalance(publicKey);
+    }, 30000); // Refresh every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [isConnected, publicKey]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center rounded-full bg-indigo-100/5 px-3 py-1 text-sm font-semibold text-white ring-1 ring-inset ring-white/10">
+        Loading...
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center rounded-full bg-red-500/10 px-3 py-1 text-sm font-semibold text-red-400 ring-1 ring-inset ring-red-500/20">
+        {error}
+      </div>
+    );
+  }
+
+  if (!isConnected) {
+    return (
+      <button
+        onClick={handleManualConnect}
+        className="rounded-full bg-indigo-100/5 px-3 py-1 text-sm font-semibold text-white ring-1 ring-inset ring-white/10 hover:bg-indigo-100/10"
+      >
+        Connect Wallet
+      </button>
+    );
+  }
+
   return (
-    <div className="w-full max-w-5xl">
-      <div className="bg-black/30 backdrop-blur-sm rounded-lg p-8 shadow-lg">
-        <h2 className="text-2xl font-bold text-white mb-6">
-          Get DeFacts AI Assistant
-        </h2>
-
-        <div className="mb-4 text-sm text-gray-300">
-          Service status: {loading ? "Processing..." : error ? "Error" : "Ready"}
+    <div className="flex flex-col gap-4 w-full">
+      <div className="flex items-center gap-2">
+        <div className="flex items-center justify-center rounded-full bg-indigo-100/5 px-3 py-1 text-sm font-semibold text-white ring-1 ring-inset ring-white/10">
+          {publicKey ? `${publicKey.slice(0, 4)}...${publicKey.slice(-4)}` : 'Error loading wallet'}
         </div>
-
-        <div className="tabs tabs-lifted">
-          <a 
-            className={`tab ${activeTab === 'question' ? 'tab-active' : ''}`}
-            onClick={() => setActiveTab('question')}
-          >
-            Question Input
-          </a>
-          <a 
-            className={`tab ${activeTab === 'results' ? 'tab-active' : ''}`}
-            onClick={() => setActiveTab('results')}
-            disabled={!response}
-          >
-            Results & Sources
-          </a>
-        </div>
-
-        <div className="p-4 bg-base-200 rounded-b-box">
-          {activeTab === 'question' && (
-            <form onSubmit={handleSubmitQuestion} className="space-y-4">
-              <div>
-                <label htmlFor="question" className="block text-sm font-medium text-gray-300 mb-2">
-                  Ask a Question
-                </label>
-                <textarea
-                  id="question"
-                  value={question}
-                  onChange={(e) => setQuestion(e.target.value)}
-                  placeholder="Enter your question here..."
-                  className="textarea textarea-bordered w-full min-h-[100px] bg-black/20 text-white"
-                  disabled={loading}
-                />
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading || !question}
-                className="btn btn-primary w-full"
-              >
-                {loading ? "Processing..." : "Get Answer"}
-              </button>
-            </form>
-          )}
-
-          {activeTab === 'results' && response && (
-            <div className="space-y-4">
-              <div className="bg-black/20 border border-white/20 rounded-lg p-4">
-                <h3 className="text-white font-medium mb-2">Response:</h3>
-                <div 
-                  className="text-gray-300 prose prose-invert max-w-none"
-                  dangerouslySetInnerHTML={{ 
-                    __html: convertMarkdownToHtml(response.response || '') 
-                  }}
-                />
-              </div>
-              
-              {response.citations && response.citations.length > 0 && (
-                <div className="bg-black/20 border border-white/20 rounded-lg p-4">
-                  <h3 className="text-white font-medium mb-2">Sources:</h3>
-                  <div className="space-y-2">
-                    {response.citations.map((citation, index) => (
-                      <div key={index} className="flex items-center gap-3">
-                        <input
-                          type="checkbox"
-                          id={`source-${index}`}
-                          checked={selectedSources.has(index)}
-                          onChange={() => handleSourceToggle(index)}
-                          className="checkbox checkbox-sm"
-                        />
-                        <label 
-                          htmlFor={`source-${index}`}
-                          className="text-blue-400 hover:text-blue-300 cursor-pointer flex-1"
-                        >
-                          <a href={citation} target="_blank" rel="noopener noreferrer">
-                            {citation}
-                          </a>
-                        </label>
-                      </div>
-                    ))}
-                  </div>
-                  
-                  <div className="mt-4">
-                    <button
-                      onClick={handleLogFacts}
-                      disabled={selectedSources.size === 0}
-                      className={`btn btn-primary w-full ${selectedSources.size === 0 ? 'opacity-50 cursor-not-allowed' : ''}`}
-                    >
-                      Log Facts
-                    </button>
-                  </div>
-                </div>
-              )}
+        {tokenBalance !== null && (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center justify-center rounded-full bg-indigo-100/5 px-3 py-1 text-sm font-semibold text-white ring-1 ring-inset ring-white/10">
+              {tokenBalance} DFCT
             </div>
-          )}
-        </div>
-
-        {error && (
-          <div className="alert alert-error mt-4">
-            <p className="text-sm">{error}</p>
-          </div>
-        )}
-
-        {debug && (
-          <div className="alert alert-info mt-4">
-            <pre className="text-xs whitespace-pre-wrap">
-              Debug Information:
-              {debug}
-            </pre>
+            <button
+              onClick={handleRefresh}
+              disabled={isRefreshing}
+              className={`rounded-full bg-indigo-100/5 p-1.5 text-white ring-1 ring-inset ring-white/10 
+                ${isRefreshing ? 'opacity-50 cursor-not-allowed' : 'hover:bg-indigo-100/10'}`}
+            >
+              <RefreshCw size={14} className={isRefreshing ? 'animate-spin' : ''} />
+            </button>
           </div>
         )}
       </div>
+
+      <form onSubmit={handleSubmit} className="relative w-full">
+        <div className="relative flex items-center">
+          <textarea
+            value={inputText}
+            onChange={handleInputChange}
+            onKeyDown={handleKeyDown}
+            placeholder="Type your message..."
+            disabled={isProcessing}
+            rows={1}
+            className="w-full resize-none bg-gray-900/50 rounded-xl border border-gray-800 px-4 py-2 text-white placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed pr-12"
+            style={{ minHeight: '42px', maxHeight: '200px' }}
+          />
+          <button
+            type="submit"
+            disabled={isProcessing || !inputText.trim()}
+            className="absolute right-2 rounded-lg p-2 text-gray-400 hover:text-white hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-transparent"
+          >
+            {isProcessing ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <svg
+                className="h-5 w-5 rotate-90"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"
+                />
+              </svg>
+            )}
+          </button>
+        </div>
+      </form>
     </div>
   );
 };

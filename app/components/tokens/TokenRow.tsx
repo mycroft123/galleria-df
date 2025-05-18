@@ -1,3 +1,5 @@
+'use client';
+
 // TokenRow.tsx - Update price handling
 import dynamic from 'next/dynamic';
 import { useRouter, useSearchParams } from "next/navigation";

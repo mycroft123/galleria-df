@@ -1,15 +1,18 @@
 "use client";
 
 import React, { useState } from "react";
-import { MessageSquare, Bot, CircuitBoard } from "lucide-react";
-import { PhotoIcon, StopCircleIcon, LinkIcon } from "@heroicons/react/24/outline";
+
+import { PhotoIcon, StopCircleIcon, LinkIcon, ChartBarIcon } from "@heroicons/react/24/outline";
 import HeaderNavigation from "./HeaderNavigation";
 import MobileNavigation from "./MobileNavigation";
 import SidebarNavigation from "./SidebarNavigation";
+import { usePersistentView } from "../../hooks/usePersistentView";
+import { MessageSquare, Bot, CircuitBoard, ScatterChart } from "lucide-react";
 
 interface NavigationProps {
   searchParams: {
-    view: string;
+    view?: string;
+    [key: string]: string | undefined;
   };
   params: {
     walletAddress: string;
@@ -18,9 +21,9 @@ interface NavigationProps {
 
 const navigation = [
   { name: "Chat", href: "chat", icon: MessageSquare },
-  { name: "AI", href: "ai", icon: Bot },
-  { name: "Strategy", href: "ai2", icon: CircuitBoard },
+  { name: "Analysis", href: "analysis", icon: ScatterChart },
   { name: "NFTs", href: "nfts", icon: PhotoIcon },
+  { name: "Portfolio", href: "portfolio", icon: ChartBarIcon },
   { name: "Tokens", href: "tokens", icon: StopCircleIcon },
   { name: "URL Input", href: "url", icon: LinkIcon },
 ];
@@ -30,6 +33,13 @@ const Navigation = ({
     searchParams
 }: NavigationProps) => {
     const [sidebarOpen, setSidebarOpen] = useState(false);
+    const { currentView, changeView } = usePersistentView('tokens');
+
+    // Pass the changeView function to child components with wallet address
+    const navigationWithHandler = navigation.map(item => ({
+      ...item,
+      onClick: () => changeView(item.href, params.walletAddress)
+    }));
 
     return (
       <>
@@ -37,15 +47,15 @@ const Navigation = ({
         <MobileNavigation
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
-          navigation={navigation}
-          searchParams={searchParams}
+          navigation={navigationWithHandler}
+          searchParams={{ view: currentView }}
           params={params}
         />
 
         {/* Sidebar navigation */}
         <SidebarNavigation
-          navigation={navigation}
-          searchParams={searchParams}
+          navigation={navigationWithHandler}
+          searchParams={{ view: currentView }}
           params={params}
         />
 
