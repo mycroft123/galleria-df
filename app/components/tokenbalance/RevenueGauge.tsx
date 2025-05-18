@@ -126,7 +126,7 @@ const RevenueGauge: React.FC<RevenueGaugeProps> = ({ walletAddress }) => {
       {/* Revenue Stats */}
       <div className="grid grid-cols-3 gap-4 mb-6">
         <div className="bg-gray-800/80 p-3 rounded-lg">
-          <div className="text-sm text-gray-400">Today's Revenue</div>
+          <div className="text-sm text-gray-400">Today&apos;s Revenue</div>
           <div className="text-xl font-semibold">{formatCurrency(currentRevenue)}</div>
           <div className={`flex items-center text-xs mt-1 ${revenueChange >= 0 ? 'text-green-400' : 'text-red-400'}`}>
             {revenueChange >= 0 ? (
