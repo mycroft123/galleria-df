@@ -33,7 +33,9 @@ const HeaderNavigation = ({ setSidebarOpen }: HeaderNavigationProps) => {
 
           {/* Center - Logo and DeFacts text (visible only on mobile) */}
           <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center lg:hidden">
-            <Logo className="h-6 w-6" />
+            <div className="h-6 w-6 flex items-center justify-center">
+              <Logo className="h-full w-full" style={{ maxHeight: '12px', maxWidth: '12px' }} />
+            </div>
             <span className="ml-2 text-white font-semibold text-lg">DeFacts</span>
           </div>
 
