@@ -11,7 +11,7 @@ import "react-toastify/dist/ReactToastify.css";
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Galleria",
+  title: "DeFacts",
   description: "A portfolio viewer from DeFacts Labs",
 };
 
