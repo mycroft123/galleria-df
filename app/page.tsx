@@ -1,30 +1,17 @@
 'use client';
 
-import { useState, useEffect } from "react";
-import { Hero } from "@/app/components";
-
-// Remove these exports as they're not compatible with client components
-// export const dynamic = 'force-dynamic';
-// export const revalidate = 0;
-
-const Home = () => {
-  const [isClient, setIsClient] = useState(false);
-
-  useEffect(() => {
-    setIsClient(true);
-  }, []);
-
+export default function AI2Page() {
   return (
-    <main className="flex h-screen items-center justify-center bg-radial-gradient p-4 md:p-10">
-      <div className="flex w-full flex-col items-center justify-center rounded-lg text-center">
-        {isClient ? (
-          <Hero />
-        ) : (
-          <div className="animate-pulse text-white text-2xl">Loading...</div>
-        )}
+    <div className="flex h-screen items-center justify-center bg-gray-900 p-4">
+      <div className="text-white text-center">
+        <h1 className="text-2xl mb-4">This page is currently unavailable</h1>
+        <a 
+          href="/"
+          className="px-4 py-2 bg-blue-500 rounded hover:bg-blue-600 transition-colors"
+        >
+          Return Home
+        </a>
       </div>
-    </main>
+    </div>
   );
-};
-
-export default Home;
+}

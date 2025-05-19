@@ -27,9 +27,9 @@ const nextConfig = {
     output: 'standalone',
     // Completely disable static generation
     staticPageGenerationTimeout: 1000,
-    // Skip all static optimization
-    optimizeFonts: false,
-    poweredByHeader: false,
+    // Remove these problematic options
+    // optimizeFonts: false,
+    // poweredByHeader: false,
 };
 
 module.exports = nextConfig;
