@@ -154,7 +154,7 @@ const PortfolioPage = async ({ params, searchParams }: PageProps) => {
                       <iframe 
                         src="https://librechat-production-97e2.up.railway.app/c/new" 
                         className="w-full h-full border-0"
-                        title="LibreChat"
+                        title="DeFacts"
                         allow="microphone; camera; geolocation"
                         sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
                       />
@@ -358,7 +358,7 @@ export async function generateMetadata({
 }): Promise<Metadata> {
   const { walletAddress } = await getParams(params);
   return {
-    title: `Portfolio - ${walletAddress}`,
+    title: `DeFacts - ${walletAddress}`,
     description: `View portfolio details for wallet ${walletAddress}`,
   };
 }

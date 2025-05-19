@@ -1,13 +1,17 @@
 "use client";
-
 import React from "react";
 import { Bars3Icon } from "@heroicons/react/24/outline";
 import dynamic from 'next/dynamic';
 import { Logo } from "@/app/components";
 
+// Import DefactsBalance component with dynamic import to prevent SSR issues
+const DefactsBalance = dynamic(() => import('@/app/components/tokenbalance/DefactsBalance'), {
+  ssr: false
+});
+
 // Import WalletBalance component with dynamic import to prevent SSR issues
-const WalletBalance = dynamic(() => import('@/app/components/WalletBalance'), { 
-  ssr: false 
+const WalletBalance = dynamic(() => import('@/app/components/WalletBalance'), {
+  ssr: false
 });
 
 interface HeaderNavigationProps {
@@ -30,7 +34,7 @@ const HeaderNavigation = ({ setSidebarOpen }: HeaderNavigationProps) => {
               <Bars3Icon className="h-6 w-6 text-white" aria-hidden="true" />
             </button>
           </div>
-
+          
           {/* Center - Logo and DeFacts text (visible only on mobile) */}
           <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center lg:hidden">
             <div className="h-6 w-6 flex items-center justify-center">
@@ -38,9 +42,13 @@ const HeaderNavigation = ({ setSidebarOpen }: HeaderNavigationProps) => {
             </div>
             <span className="ml-2 text-white font-semibold text-lg">DeFacts</span>
           </div>
-
-          {/* Right side - Wallet balance */}
+          
+          {/* Right side - DeFacts Balance and Wallet balance */}
           <div className="hidden items-center gap-x-2 sm:flex lg:gap-x-4">
+            {/* Add DefactsBalance component here */}
+            <DefactsBalance />
+            
+            {/* Keep the original WalletBalance as second item */}
             <WalletBalance />
           </div>
         </div>
