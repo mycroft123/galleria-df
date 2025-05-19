@@ -3,8 +3,9 @@
 import { useState, useEffect } from "react";
 import { Hero } from "@/app/components";
 
-export const dynamic = 'force-dynamic';
-export const revalidate = 0;
+// Remove these exports as they're not compatible with client components
+// export const dynamic = 'force-dynamic';
+// export const revalidate = 0;
 
 const Home = () => {
   const [isClient, setIsClient] = useState(false);
