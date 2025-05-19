@@ -25,6 +25,11 @@ const nextConfig = {
     },
     // Use standalone output
     output: 'standalone',
+    // Completely disable static generation
+    staticPageGenerationTimeout: 1000,
+    // Skip all static optimization
+    optimizeFonts: false,
+    poweredByHeader: false,
 };
 
 module.exports = nextConfig;

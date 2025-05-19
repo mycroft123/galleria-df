@@ -1,12 +1,14 @@
 'use client';
 
+import { useState, useEffect } from "react";
 import { Hero } from "@/app/components";
-import { useEffect, useState } from "react";
+
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 const Home = () => {
   const [isClient, setIsClient] = useState(false);
 
-  // This ensures that any API calls within Hero only happen client-side
   useEffect(() => {
     setIsClient(true);
   }, []);
@@ -17,7 +19,7 @@ const Home = () => {
         {isClient ? (
           <Hero />
         ) : (
-          <div className="animate-pulse text-2xl text-white">Loading...</div>
+          <div className="animate-pulse text-white text-2xl">Loading...</div>
         )}
       </div>
     </main>
