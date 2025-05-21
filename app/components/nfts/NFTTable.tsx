@@ -432,7 +432,7 @@ const NFTTable = ({ walletAddress }: NFTTableProps) => {
             <>
               {/* Recent Activity */}
               <div className="bg-gray-800/50 p-4 rounded-lg ring-1 ring-white/10">
-                <h3 className="text-sm font-medium text-gray-400">Recent Activity (7 days)</h3>
+                <h3 className="text-sm font-medium text-gray-400">Recent Activityb (7 days)</h3>
                 <div className="flex justify-between items-center mt-2">
                   <div className="flex items-center">
                     <div className="rounded-full w-3 h-3 bg-blue-500 mr-2"></div>

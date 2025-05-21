@@ -2,9 +2,6 @@
 
 import { Logo } from "@/app/components";
 import { classNames } from "@/app/utils";
-import { PhotoIcon, StopCircleIcon, LinkIcon, ChartBarIcon } from "@heroicons/react/24/outline";
-import { usePersistentView } from "@/app/hooks/usePersistentView";
-import { MessageSquare, ScatterChart } from "lucide-react";
 
 interface SidebarNavigationProps {
     navigation: {
@@ -12,6 +9,8 @@ interface SidebarNavigationProps {
         href: string;
         icon: any;
     }[];
+    currentView: string; // Add explicit currentView prop
+    onNavigate: (href: string) => void; // Add callback for navigation
     searchParams: {
         view?: string;
     };
@@ -20,24 +19,12 @@ interface SidebarNavigationProps {
     };
 }
 
-const defaultNavigation = [
-    { name: "Chat", href: "chat", icon: MessageSquare },
-    { name: "Analysis", href: "analysis", icon: ScatterChart },
-    { name: "NFTs", href: "nfts", icon: PhotoIcon },
-    { name: "Portfolio", href: "portfolio", icon: ChartBarIcon },
-    { name: "URL Input", href: "url", icon: LinkIcon },
-];
-
 const SidebarNavigation = ({
-    navigation = defaultNavigation,
+    navigation,
+    currentView,
+    onNavigate,
     params,
 }: SidebarNavigationProps) => {
-    const { currentView, changeView, isInitialized } = usePersistentView();
-
-    if (!isInitialized) {
-      return null; // or a loading state
-    }
-
     return (
         <div className="hidden bg-black bg-opacity-40 backdrop-blur-sm lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:block lg:w-20 lg:overflow-y-auto lg:pb-4">
             <div className="flex h-16 shrink-0 items-center justify-center">
@@ -48,7 +35,7 @@ const SidebarNavigation = ({
                     {navigation.map((item) => (
                         <li key={item.name} className="w-full px-2">
                             <button
-                                onClick={() => changeView(item.href, params.walletAddress)}
+                                onClick={() => onNavigate(item.href)}
                                 className={classNames(
                                     currentView === item.href
                                         ? "bg-indigo-100/5 text-white ring-1 ring-inset ring-white/30 transition duration-200 ease-in-out"
@@ -57,7 +44,12 @@ const SidebarNavigation = ({
                                 )}
                             >
                                 <item.icon
-                                    className="h-5 w-5 shrink-0"
+                                    className={classNames(
+                                        currentView === item.href
+                                            ? "text-white" // Highlighted state
+                                            : "text-white/40 group-hover:text-white",
+                                        "h-5 w-5 shrink-0"
+                                    )}
                                     aria-hidden="true"
                                 />
                                 <span className="text-xs font-base mt-1">

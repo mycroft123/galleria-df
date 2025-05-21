@@ -14,6 +14,11 @@ const WalletBalance = dynamic(() => import('@/app/components/WalletBalance'), {
   ssr: false
 });
 
+// Import our debug component
+const WalletDebug = dynamic(() => import('./WalletDebug'), {
+  ssr: false
+});
+
 interface HeaderNavigationProps {
   setSidebarOpen: (open: boolean) => void;
 }
@@ -43,12 +48,15 @@ const HeaderNavigation = ({ setSidebarOpen }: HeaderNavigationProps) => {
             <span className="ml-2 text-white font-semibold text-lg">DeFacts</span>
           </div>
           
-          {/* Right side - DeFacts Balance and Wallet balance */}
-          <div className="hidden items-center gap-x-2 sm:flex lg:gap-x-4">
-            {/* Add DefactsBalance component here */}
+          {/* Right side - Debug info, DeFacts Balance, and Wallet balance */}
+          <div className="flex items-center gap-x-2 sm:flex lg:gap-x-4">
+            {/* Add wallet debug component */}
+            <WalletDebug />
+            
+            {/* Add DefactsBalance component */}
             <DefactsBalance />
             
-            {/* Keep the original WalletBalance as second item */}
+            {/* Keep the original WalletBalance as last item */}
             <WalletBalance />
           </div>
         </div>

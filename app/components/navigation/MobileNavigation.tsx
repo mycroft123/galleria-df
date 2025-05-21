@@ -3,7 +3,6 @@
 import React, { Fragment, useState, useEffect } from "react";
 import { Transition, Dialog } from "@headlessui/react";
 import { XMarkIcon } from "@heroicons/react/24/outline";
-import { usePersistentView } from "@/app/hooks/usePersistentView";
 import { Logo } from "@/app/components";
 import { classNames } from "@/app/utils";
 
@@ -15,6 +14,8 @@ interface MobileNavigationProps {
         href: string;
         icon: any;
     }[];
+    currentView: string; // Add explicit currentView prop
+    onNavigate: (href: string) => void; // Add callback for navigation
     searchParams: {
         view?: string;
     };
@@ -27,11 +28,11 @@ const MobileNavigation = ({
     sidebarOpen,
     setSidebarOpen,
     navigation,
-    searchParams,
+    currentView,
+    onNavigate,
     params,
 }: MobileNavigationProps) => {
   const [isClient, setIsClient] = useState(false);
-  const { currentView, changeView } = usePersistentView();
 
   useEffect(() => {
     setIsClient(true);
@@ -105,7 +106,7 @@ const MobileNavigation = ({
                       <button
                         key={item.name}
                         onClick={() => {
-                          changeView(item.href, params.walletAddress);
+                          onNavigate(item.href);
                           setSidebarOpen(false);
                         }}
                         className={classNames(
@@ -116,7 +117,12 @@ const MobileNavigation = ({
                         )}
                       >
                         <item.icon
-                          className="h-6 w-6 shrink-0"
+                          className={classNames(
+                            currentView === item.href
+                              ? "text-white" // Highlighted state
+                              : "text-white/40 group-hover:text-white",
+                            "h-6 w-6 shrink-0"
+                          )}
                           aria-hidden="true"
                         />
                         {item.name}
