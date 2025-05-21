@@ -13,11 +13,11 @@ import {
   URLInput,
   AIInput,
   PAIInput,
-  ChatAIInput,
   Analysis,
   Story
 } from "@/app/components";
 import PortfolioView from "@/app/components/tokenbalance/PortfolioView";
+import PersistentChatFrame from "@/app/components/PersistentChatFrame"; // Import the new component
 
 import { FungibleToken, NonFungibleToken } from "@/app/types";
 
@@ -68,13 +68,14 @@ const PortfolioPage = async ({ params, searchParams }: PageProps) => {
   const walletAddress = awaitedParams.walletAddress || "ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp";
   const { view, details, tokenDetails } = awaitedSearchParams;
 
-  // No redirect for chat view - will be displayed in iframe
-
   // Fetch assets
   const { fungibleTokens, nonFungibleTokens } = await getAllAssets(walletAddress);
 
   const hasModal = details || tokenDetails;
   const modalClass = hasModal ? "flex h-screen flex-col overflow-hidden" : "";
+  
+  // Check if the current view is chat
+  const isChatView = view === "chat";
 
   return (
     <div className="min-h-screen bg-radial-gradient">
@@ -84,9 +85,12 @@ const PortfolioPage = async ({ params, searchParams }: PageProps) => {
           <Navigation searchParams={awaitedSearchParams} params={awaitedParams} />
         </div>
 
-        {/* Main area */}
-        <main className={view === "chat" ? "pt-16 px-0 py-0" : "pt-16"}>
-          <div className={view === "chat" ? "" : "px-6 py-6"}>
+        {/* Persistent Chat Frame - always rendered, visibility controlled by prop */}
+        <PersistentChatFrame isActive={isChatView} />
+
+        {/* Main area - only render content when not in chat view */}
+        <main className={isChatView ? "pt-16 hidden" : "pt-16"}>
+          <div className="px-6 py-6">
             {/* Tokens Modal */}
             {tokenDetails && (
               <div className="fixed inset-0 z-40 flex items-center justify-center bg-orange-900 bg-opacity-70">
@@ -149,17 +153,8 @@ const PortfolioPage = async ({ params, searchParams }: PageProps) => {
                     </div>
                   )}
                   
-                  {view === "chat" && (
-                    <div className="absolute top-16 left-0 right-0 bottom-0 lg:left-20">
-                      <iframe 
-                        src="https://librechat-production-97e2.up.railway.app/c/new" 
-                        className="w-full h-full border-0"
-                        title="DeFacts"
-                        allow="microphone; camera; geolocation"
-                        sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-                      />
-                    </div>
-                  )}
+                  {/* The chat iframe is now handled by PersistentChatFrame */}
+                  {/* We've removed the chat view code from here */}
                   
                   {view === "analysis" && (
                     <div className="flex justify-center items-center">
@@ -209,6 +204,7 @@ const PortfolioPage = async ({ params, searchParams }: PageProps) => {
 };
 
 const getAllAssets = async (walletAddress: string) => {
+  // Existing getAllAssets implementation
   const url = process.env.NEXT_PUBLIC_HELIUS_RPC_URL;
   const apiKey = process.env.NEXT_PUBLIC_HELIUS_API_KEY;
 
