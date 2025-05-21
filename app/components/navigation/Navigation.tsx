@@ -222,7 +222,7 @@ const NavigationContent = ({
     return (
       <>
         {/* Debug overlay */}
-        <div 
+          {/*<div 
           style={{
             position: 'fixed',
             bottom: '10px',
@@ -242,7 +242,7 @@ const NavigationContent = ({
           <div>Check Count: {debugInfo.checkCount}</div>
           <div>Items: {debugInfo.navigationItems.join(', ')}</div>
           <div>Current View: {currentView}</div>
-        </div>
+        </div>*/}
       
         {/* Mobile navigation */}
         <MobileNavigation
