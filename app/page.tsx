@@ -1,17 +1,12 @@
-'use client';
-
-import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+// app/page.tsx
+import { redirect } from 'next/navigation';
 
 export default function Home() {
-  const router = useRouter();
+  // Server-side redirect using Next.js redirect function
+  // This happens on the server before any client-side rendering
+  redirect('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
   
-  useEffect(() => {
-    // Redirect to the chat view with the specific wallet address
-    router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
-  }, [router]);
-  
-  // Show a loading state while the redirect happens
+  // This part won't be rendered due to the redirect, but is included as a fallback
   return (
     <main className="flex h-screen items-center justify-center bg-radial-gradient p-4 md:p-10">
       <div className="flex w-full flex-col items-center justify-center rounded-lg text-center">
