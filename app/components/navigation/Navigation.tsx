@@ -20,13 +20,19 @@ interface NavigationProps {
   };
 }
 
-const navigation = [
+// Original navigation items
+const fullNavigation = [
   { name: "Chat", href: "chat", icon: MessageSquare },
   { name: "Analysis", href: "analysis", icon: ScatterChart },
   { name: "NFTs", href: "nfts", icon: PhotoIcon },
   { name: "Portfolio", href: "portfolio", icon: ChartBarIcon },
   { name: "Tokens", href: "tokens", icon: StopCircleIcon },
   { name: "URL Input", href: "url", icon: LinkIcon },
+];
+
+// Just the chat tab for unauthenticated users
+const limitedNavigation = [
+  { name: "Chat", href: "chat", icon: MessageSquare }
 ];
 
 // This is the inner component that uses the wallet hook
@@ -39,30 +45,24 @@ const NavigationContent = ({
     const { currentView, changeView } = usePersistentView('tokens');
     const { isConnected, publicKey, tokenBalance, isLoading } = useWallet();
     
-    // Check authentication and redirect if needed
+    // Force chat view if not authenticated
     useEffect(() => {
-      // Skip check if wallet state is still loading
-      if (isLoading) return;
-      
-      // If viewing something other than chat and not authenticated
-      if (currentView !== 'chat' && (!isConnected || !publicKey)) {
-        // Redirect to default portfolio with chat view
+      if (!isLoading && currentView !== 'chat' && (!isConnected || !publicKey)) {
         router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
       }
     }, [currentView, isConnected, publicKey, isLoading, router]);
+    
+    // Determine which navigation items to show based on authentication
+    const visibleNavigation = (!isLoading && isConnected && publicKey) 
+      ? fullNavigation 
+      : limitedNavigation;
 
-    // Add auth check to navigation handler
-    const navigationWithHandler = navigation.map(item => ({
+    // Add click handlers to navigation items
+    const navigationWithHandler = visibleNavigation.map(item => ({
       ...item,
       onClick: () => {
-        // If trying to navigate to a view other than chat while not authenticated
-        if (item.href !== 'chat' && (!isConnected || !publicKey)) {
-          // Force redirect to the default portfolio chat view
-          router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
-        } else {
-          // Otherwise, normal navigation
-          changeView(item.href, params.walletAddress);
-        }
+        // For authenticated users or chat tab, use normal navigation
+        changeView(item.href, params.walletAddress);
       }
     }));
 
