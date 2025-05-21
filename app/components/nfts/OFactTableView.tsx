@@ -805,6 +805,18 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
     return <div className="w-full p-4 text-center text-gray-400">No OFacts found</div>;
   }
 
+  // Use this for debugging the state of tabs
+  const debugInfo = {
+    activeTab,
+    tabCounts,
+    openRequestsLength: openRequests.length,
+    inProgressLength: miningInProgress.length,
+    completedLength: miningComplete.length
+  };
+  
+  // Uncomment to debug the tab state
+  // console.log('Tab Debug Info:', debugInfo);
+
   return (
     <div className="w-full space-y-6">
       <div className="flex justify-between items-center mb-4">
@@ -906,273 +918,267 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
         </nav>
       </div>
       
-{/* Tab Content */}
-<div className="tab-content mt-4" style={{ position: 'relative', minHeight: '400px', border: '2px solid transparent' }}>
-  {/* Open Requests Tab */}
-  {activeTab === 'open_requests' && (
-    <div style={{ position: 'relative', zIndex: 10 }}>
-      <div className="w-full overflow-x-auto rounded-lg bg-gray-800/10 ring-1 ring-amber-500/30">
-        {openRequests.length > 0 ? (
-          <div>
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-white/10 bg-amber-900/20">
-                  <th className="p-3 text-left">Type</th>
-                  <th className="p-3 text-left">URL</th>
-                  <th className="p-3 text-left">Created</th>
-                  <th className="p-3 text-left">Action</th>
-                </tr>
-              </thead>
-              <tbody>
-                {openRequests.map(nft => (
-                  <tr 
-                    key={nft.id}
-                    className="border-b border-white/10 hover:bg-gray-800/30 transition-colors cursor-pointer"
-                    onClick={() => setDetailPopup({ type: 'nft', nft })}
-                  >
-                    <td className="p-3">
-                      <div className="w-6 h-6 flex-shrink-0">
-                        <img 
-                          src={COLOR_TO_IMAGE_MAP.red}
-                          alt="OFact"
-                          className="w-full h-full"
-                        />
-                      </div>
-                    </td>
-                    <td className="p-3 text-sm">
-                      <div className="flex items-center gap-1">
-                        <ExternalLink className="h-3 w-3 text-gray-400" />
-                        <div className="text-gray-300 truncate max-w-md">
-                          {getSourceUrl(nft)}
-                        </div>
-                      </div>
-                      {miningErrors[nft.id] && (
-                        <div className="text-xs text-red-400 mt-1">
-                          Error: {miningErrors[nft.id]}
-                        </div>
-                      )}
-                    </td>
-                    <td className="p-3 text-sm text-gray-300">
-                      {formatDate(nft)}
-                    </td>
-                    <td className="p-3">
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleMining(nft.id);
-                        }}
-                        className="inline-flex items-center gap-1 rounded-lg bg-emerald-100/5 px-3 py-2 text-sm font-semibold text-white ring-1 ring-inset ring-white/10 transition-all hover:bg-emerald-100/10"
-                      >
-                        Mine Fact
-                      </button>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="p-8 text-center text-gray-400">
-            No open fact requests
-          </div>
-        )}
-      </div>
-    </div>
-  )}
-  
-  {/* Mining In Progress Tab */}
-  {activeTab === 'in_progress' && (
-    <div style={{ position: 'relative', zIndex: 10 }}>
-      <div className="w-full overflow-x-auto rounded-lg bg-gray-800/10 ring-1 ring-blue-500/30">
-        {miningInProgress.length > 0 ? (
-          <div>
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-white/10 bg-blue-900/20">
-                  <th className="p-3 text-left">Type</th>
-                  <th className="p-3 text-left">URL</th>
-                  <th className="p-3 text-left">Miner</th>
-                  <th className="p-3 text-left">Progress</th>
-                </tr>
-              </thead>
-              <tbody>
-                {miningInProgress.map(nft => (
-                  <tr 
-                    key={nft.id}
-                    className="border-b border-white/10 hover:bg-gray-800/30 transition-colors cursor-pointer"
-                    onClick={() => setDetailPopup({ type: 'nft', nft })}
-                  >
-                    <td className="p-3">
-                      <div className="w-6 h-6 flex-shrink-0">
-                        <img 
-                          src={COLOR_TO_IMAGE_MAP.blue}
-                          alt="OFACT"
-                          className="w-full h-full"
-                        />
-                      </div>
-                    </td>
-                    <td className="p-3 text-sm">
-                      <div className="flex items-center gap-1">
-                        <ExternalLink className="h-3 w-3 text-gray-400" />
-                        <div className="text-gray-300 truncate max-w-md">
-                          {getSourceUrl(nft)}
-                        </div>
-                      </div>
-                    </td>
-                    <td className="p-3 text-sm text-gray-300">
-                      {minerNames[nft.id] || 'Unknown'}
-                    </td>
-                    <td className="p-3">
-                      <div className="flex flex-col gap-1">
-                        <div className="inline-flex items-center gap-1 text-blue-400 text-sm">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          <span className="font-medium">
-                            {progressPercent[nft.id]}%
-                          </span>
-                        </div>
-                        <div className="w-full bg-gray-700 rounded-full h-2">
-                          <div 
-                            className="bg-blue-500 h-2 rounded-full transition-all duration-200" 
-                            style={{ width: `${progressPercent[nft.id]}%` }}
-                          />
-                        </div>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="p-8 text-center text-gray-400">
-            No facts being mined
-          </div>
-        )}
-      </div>
-    </div>
-  )}
-  
-  {/* Mining Complete Tab */}
-  {activeTab === 'mining_complete' && (
-    <div style={{ position: 'relative', zIndex: 10 }}>
-      <div className="w-full overflow-x-auto rounded-lg bg-gray-800/10 ring-1 ring-green-500/30">
-        {miningComplete.length > 0 ? (
-          <div>
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-white/10 bg-green-900/20">
-                  <th className="p-3 w-10"></th>
-                  <th className="p-3 text-left w-20">Type</th>
-                  <th className="p-3 text-left">Source</th>
-                  <th className="p-3 text-left">Completed</th>
-                  <th className="p-3 text-left">Facts</th>
-                </tr>
-              </thead>
-              <tbody>
-                {miningComplete.map((ofact) => (
-                  <React.Fragment key={ofact.id}>
-                    {/* OFACT Row */}
-                    <tr 
-                      className="border-b border-white/10 hover:bg-gray-800/30 transition-colors cursor-pointer"
-                      onClick={(e) => {
-                        e.stopPropagation(); // Prevent toggling when clicking on the row
-                        setDetailPopup({ type: 'nft', nft: ofact });
-                      }}
-                    >
-                      <td className="p-3 text-center" onClick={(e) => {
-                        e.stopPropagation(); // Don't open detail popup when clicking chevron
-                        toggleExpandedOfact(ofact.id);
-                      }}>
-                        {expandedOfacts[ofact.id] ? (
-                          <ChevronDown className="h-4 w-4" />
-                        ) : (
-                          <ChevronRight className="h-4 w-4" />
-                        )}
-                      </td>
-                      <td className="p-3">
-                        <div className="flex items-center">
-                          <div className="w-6 h-6 flex-shrink-0">
-                            <img 
-                              src={COLOR_TO_IMAGE_MAP.orange}
-                              alt="Completed OFACT"
-                              className="w-full h-full"
-                            />
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-3 text-sm">
-                        <div className="flex flex-col gap-1">
-                          <div className="flex items-center gap-1">
-                            <ExternalLink className="h-3 w-3 text-gray-400 flex-shrink-0" />
-                            <div className="text-gray-300 truncate max-w-md">
-                              {getSourceUrl(ofact)}
-                            </div>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="p-3 text-sm text-gray-300">
-                        {formatDate(ofact)}
-                      </td>
-                      <td className="p-3 text-sm">
-                        <span className="text-green-400 font-medium">
-                          {(extractedFacts[ofact.id]?.length || 0)} facts
-                        </span>
-                      </td>
+      {/* Tab Content */}
+      <div className="mt-4">
+        {/* Open Requests Tab */}
+        {activeTab === 'open_requests' && (
+          <div className="w-full overflow-x-auto rounded-lg bg-gray-800/10 ring-1 ring-amber-500/30">
+            {openRequests.length > 0 ? (
+              <div>
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-white/10 bg-amber-900/20">
+                      <th className="p-3 text-left">Type</th>
+                      <th className="p-3 text-left">URL</th>
+                      <th className="p-3 text-left">Created</th>
+                      <th className="p-3 text-left">Action</th>
                     </tr>
-                    
-                    {/* AFACT Rows (expanded) */}
-                    {expandedOfacts[ofact.id] && extractedFacts[ofact.id]?.map((afact, index) => (
+                  </thead>
+                  <tbody>
+                    {openRequests.map(nft => (
                       <tr 
-                        key={`${ofact.id}-${index}`}
-                        className="border-b border-white/10 bg-green-900/10 hover:bg-green-900/20 cursor-pointer"
-                        onClick={() => setDetailPopup({ type: 'afact', afact, parent: ofact })}
+                        key={nft.id}
+                        className="border-b border-white/10 hover:bg-gray-800/30 transition-colors cursor-pointer"
+                        onClick={() => setDetailPopup({ type: 'nft', nft })}
                       >
-                        <td className="p-3"></td>
-                        <td className="p-3 pl-6">
+                        <td className="p-3">
                           <div className="w-6 h-6 flex-shrink-0">
                             <img 
-                              src={COLOR_TO_IMAGE_MAP.yellow}
-                              alt="AFACT"
+                              src={COLOR_TO_IMAGE_MAP.red}
+                              alt="OFact"
                               className="w-full h-full"
                             />
                           </div>
                         </td>
-                        <td colSpan={3} className="p-3 text-sm">
-                          <div className="text-gray-200 line-clamp-2 mb-1">{afact.fact}</div>
-                          <div className="flex items-center justify-between">
-                            <div className="text-xs text-gray-500">
-                              ID: {afact.mintId.slice(0, 8)}...
+                        <td className="p-3 text-sm">
+                          <div className="flex items-center gap-1">
+                            <ExternalLink className="h-3 w-3 text-gray-400" />
+                            <div className="text-gray-300 truncate max-w-md">
+                              {getSourceUrl(nft)}
                             </div>
-                            <div className="text-xs text-blue-400 whitespace-nowrap flex-shrink-0">
-                              {formatAFactDate(afact.extractedDate)}
+                          </div>
+                          {miningErrors[nft.id] && (
+                            <div className="text-xs text-red-400 mt-1">
+                              Error: {miningErrors[nft.id]}
+                            </div>
+                          )}
+                        </td>
+                        <td className="p-3 text-sm text-gray-300">
+                          {formatDate(nft)}
+                        </td>
+                        <td className="p-3">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMining(nft.id);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-lg bg-emerald-100/5 px-3 py-2 text-sm font-semibold text-white ring-1 ring-inset ring-white/10 transition-all hover:bg-emerald-100/10"
+                          >
+                            Mine Fact
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-8 text-center text-gray-400">
+                No open fact requests
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Mining In Progress Tab */}
+        {activeTab === 'in_progress' && (
+          <div className="w-full overflow-x-auto rounded-lg bg-gray-800/10 ring-1 ring-blue-500/30">
+            {miningInProgress.length > 0 ? (
+              <div>
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-white/10 bg-blue-900/20">
+                      <th className="p-3 text-left">Type</th>
+                      <th className="p-3 text-left">URL</th>
+                      <th className="p-3 text-left">Miner</th>
+                      <th className="p-3 text-left">Progress</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {miningInProgress.map(nft => (
+                      <tr 
+                        key={nft.id}
+                        className="border-b border-white/10 hover:bg-gray-800/30 transition-colors cursor-pointer"
+                        onClick={() => setDetailPopup({ type: 'nft', nft })}
+                      >
+                        <td className="p-3">
+                          <div className="w-6 h-6 flex-shrink-0">
+                            <img 
+                              src={COLOR_TO_IMAGE_MAP.blue}
+                              alt="OFACT"
+                              className="w-full h-full"
+                            />
+                          </div>
+                        </td>
+                        <td className="p-3 text-sm">
+                          <div className="flex items-center gap-1">
+                            <ExternalLink className="h-3 w-3 text-gray-400" />
+                            <div className="text-gray-300 truncate max-w-md">
+                              {getSourceUrl(nft)}
+                            </div>
+                          </div>
+                        </td>
+                        <td className="p-3 text-sm text-gray-300">
+                          {minerNames[nft.id] || 'Unknown'}
+                        </td>
+                        <td className="p-3">
+                          <div className="flex flex-col gap-1">
+                            <div className="inline-flex items-center gap-1 text-blue-400 text-sm">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              <span className="font-medium">
+                                {progressPercent[nft.id]}%
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-700 rounded-full h-2">
+                              <div 
+                                className="bg-blue-500 h-2 rounded-full transition-all duration-200" 
+                                style={{ width: `${progressPercent[nft.id]}%` }}
+                              />
                             </div>
                           </div>
                         </td>
                       </tr>
                     ))}
-                    
-                    {/* Show message if no AFacts are found */}
-                    {expandedOfacts[ofact.id] && (!extractedFacts[ofact.id] || extractedFacts[ofact.id].length === 0) && (
-                      <tr className="border-b border-white/10 bg-green-900/10">
-                        <td colSpan={5} className="p-3 text-center text-xs text-gray-400">
-                          No facts extracted from this source
-                        </td>
-                      </tr>
-                    )}
-                  </React.Fragment>
-                ))}
-              </tbody>
-            </table>
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-8 text-center text-gray-400">
+                No facts being mined
+              </div>
+            )}
           </div>
-        ) : (
-          <div className="p-8 text-center text-gray-400">
-            No completed facts
+        )}
+        
+        {/* Mining Complete Tab */}
+        {activeTab === 'mining_complete' && (
+          <div className="w-full overflow-x-auto rounded-lg bg-gray-800/10 ring-1 ring-green-500/30">
+            {miningComplete.length > 0 ? (
+              <div>
+                <table className="w-full">
+                  <thead>
+                    <tr className="border-b border-white/10 bg-green-900/20">
+                      <th className="p-3 w-10"></th>
+                      <th className="p-3 text-left w-20">Type</th>
+                      <th className="p-3 text-left">Source</th>
+                      <th className="p-3 text-left">Completed</th>
+                      <th className="p-3 text-left">Facts</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {miningComplete.map((ofact) => (
+                      <React.Fragment key={ofact.id}>
+                        {/* OFACT Row */}
+                        <tr 
+                          className="border-b border-white/10 hover:bg-gray-800/30 transition-colors cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation(); // Prevent toggling when clicking on the row
+                            setDetailPopup({ type: 'nft', nft: ofact });
+                          }}
+                        >
+                          <td className="p-3 text-center" onClick={(e) => {
+                            e.stopPropagation(); // Don't open detail popup when clicking chevron
+                            toggleExpandedOfact(ofact.id);
+                          }}>
+                            {expandedOfacts[ofact.id] ? (
+                              <ChevronDown className="h-4 w-4" />
+                            ) : (
+                              <ChevronRight className="h-4 w-4" />
+                            )}
+                          </td>
+                          <td className="p-3">
+                            <div className="flex items-center">
+                              <div className="w-6 h-6 flex-shrink-0">
+                                <img 
+                                  src={COLOR_TO_IMAGE_MAP.orange}
+                                  alt="Completed OFACT"
+                                  className="w-full h-full"
+                                />
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3 text-sm">
+                            <div className="flex flex-col gap-1">
+                              <div className="flex items-center gap-1">
+                                <ExternalLink className="h-3 w-3 text-gray-400 flex-shrink-0" />
+                                <div className="text-gray-300 truncate max-w-md">
+                                  {getSourceUrl(ofact)}
+                                </div>
+                              </div>
+                            </div>
+                          </td>
+                          <td className="p-3 text-sm text-gray-300">
+                            {formatDate(ofact)}
+                          </td>
+                          <td className="p-3 text-sm">
+                            <span className="text-green-400 font-medium">
+                              {(extractedFacts[ofact.id]?.length || 0)} facts
+                            </span>
+                          </td>
+                        </tr>
+                        
+                        {/* AFACT Rows (expanded) */}
+                        {expandedOfacts[ofact.id] && extractedFacts[ofact.id]?.map((afact, index) => (
+                          <tr 
+                            key={`${ofact.id}-${index}`}
+                            className="border-b border-white/10 bg-green-900/10 hover:bg-green-900/20 cursor-pointer"
+                            onClick={() => setDetailPopup({ type: 'afact', afact, parent: ofact })}
+                          >
+                            <td className="p-3"></td>
+                            <td className="p-3 pl-6">
+                              <div className="w-6 h-6 flex-shrink-0">
+                                <img 
+                                  src={COLOR_TO_IMAGE_MAP.yellow}
+                                  alt="AFACT"
+                                  className="w-full h-full"
+                                />
+                              </div>
+                            </td>
+                            <td colSpan={3} className="p-3 text-sm">
+                              <div className="text-gray-200 line-clamp-2 mb-1">{afact.fact}</div>
+                              <div className="flex items-center justify-between">
+                                <div className="text-xs text-gray-500">
+                                  ID: {afact.mintId.slice(0, 8)}...
+                                </div>
+                                <div className="text-xs text-blue-400 whitespace-nowrap flex-shrink-0">
+                                  {formatAFactDate(afact.extractedDate)}
+                                </div>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                        
+                        {/* Show message if no AFacts are found */}
+                        {expandedOfacts[ofact.id] && (!extractedFacts[ofact.id] || extractedFacts[ofact.id].length === 0) && (
+                          <tr className="border-b border-white/10 bg-green-900/10">
+                            <td colSpan={5} className="p-3 text-center text-xs text-gray-400">
+                              No facts extracted from this source
+                            </td>
+                          </tr>
+                        )}
+                      </React.Fragment>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : (
+              <div className="p-8 text-center text-gray-400">
+                No completed facts
+              </div>
+            )}
           </div>
         )}
       </div>
-    </div>
-  )}
-</div>
       
 {selectedNFT && (
   <NFTDetails
