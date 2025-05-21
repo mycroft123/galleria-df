@@ -4,6 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { usePersistentView } from '@/app/hooks/usePersistentView';
 
+// Updated API URL to use Railway deployment
+const API_BASE_URL = "https://df-backend-13-production.up.railway.app";
+const API_BATCH_NFT_URL = `${API_BASE_URL}/api/batch-create-nft`;
+
 interface URLState {
   url: string;
   debug: string;
@@ -89,7 +93,7 @@ const URLInput = () => {
 
       handleDebugChange(`Minting URL as NFT: ${url}`);
       
-      const mintResponse = await fetch('http://localhost:3002/api/batch-create-nft', {
+      const mintResponse = await fetch(API_BATCH_NFT_URL, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
