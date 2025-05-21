@@ -1,42 +1,43 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-// Import your custom auth hook - update this import path to match your actual hook
-import { useAuth } from '@/app/hooks/useAuth'; 
+import { WalletProvider, useWallet } from '@/app/providers/WalletProvider';
 
-export default function Home() {
+// This component will handle the redirect logic after checking wallet status
+const RedirectHandler = () => {
   const router = useRouter();
-  // Replace with your actual auth check mechanism
-  const { isLoggedIn, walletAddress, isLoading: authLoading } = useAuth();
-  const [isRedirecting, setIsRedirecting] = useState(true);
+  const { isConnected, publicKey, isLoading } = useWallet();
   
   useEffect(() => {
-    // Only proceed if auth check is complete
-    if (!authLoading) {
-      if (!isLoggedIn) {
-        // User is not logged in - redirect to the default portfolio
-        router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
+    // Only redirect once wallet state is loaded (no longer loading)
+    if (!isLoading) {
+      if (isConnected && publicKey) {
+        // User is logged in - redirect to their portfolio
+        router.push(`/portfolio/${publicKey}?view=portfolio`);
       } else {
-        // User is logged in - redirect to their own portfolio
-        router.push(`/portfolio/${walletAddress}?view=portfolio`);
+        // User is not logged in - redirect to default portfolio
+        router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
       }
-      setIsRedirecting(false);
     }
-  }, [isLoggedIn, walletAddress, authLoading, router]);
-  
-  // Loading state text depends on current status
-  const loadingText = authLoading 
-    ? "Checking account status..." 
-    : isRedirecting 
-      ? "Redirecting..." 
-      : "Loading...";
+  }, [isConnected, publicKey, isLoading, router]);
   
   return (
     <main className="flex h-screen items-center justify-center bg-radial-gradient p-4 md:p-10">
       <div className="flex w-full flex-col items-center justify-center rounded-lg text-center">
-        <div className="animate-pulse text-white text-2xl">{loadingText}</div>
+        <div className="animate-pulse text-white text-2xl">
+          {isLoading ? "Checking wallet status..." : "Redirecting..."}
+        </div>
       </div>
     </main>
+  );
+};
+
+// Main component that wraps the redirect handler with the wallet provider
+export default function Home() {
+  return (
+    <WalletProvider>
+      <RedirectHandler />
+    </WalletProvider>
   );
 }
