@@ -48,7 +48,7 @@ const DefactsBalance = () => {
     <div className="flex items-center">
       <div className="rounded-full bg-green-100 bg-opacity-20 px-3 py-1.5 text-sm shadow-sm">
         <span className="font-semibold text-green-400">
-          {tokenBalance} <span className="ml-1 font-normal">DeFacts</span>
+          {tokenBalance} <span className="ml-1 font-normal"></span>
         </span>
       </div>
       
