@@ -20,8 +20,16 @@ interface NavigationProps {
   };
 }
 
-// Navigation arrays
-const CHAT_ONLY_NAV = [{ name: "Chat", href: "chat", icon: MessageSquare }];
+// Chat-only navigation - this is the default
+const CHAT_ONLY_NAV = [
+  { 
+    name: "Chat", 
+    href: "chat", 
+    icon: MessageSquare
+  }
+];
+
+// Full navigation - only shown when we confirm there's a balance
 const FULL_NAV = [
   { name: "Chat", href: "chat", icon: MessageSquare },
   { name: "Analysis", href: "analysis", icon: ScatterChart },
@@ -31,165 +39,231 @@ const FULL_NAV = [
   { name: "URL Input", href: "url", icon: LinkIcon }
 ];
 
-// Inner component
-const NavigationContent = ({ params, searchParams }: NavigationProps) => {
-  const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
-  const { currentView, changeView, setCurrentView } = usePersistentView('tokens');
-  
-  // State
-  const [hasBalance, setHasBalance] = useState(false);
-  const [detectedBalance, setDetectedBalance] = useState("");
-  const checkCountRef = useRef(0);
-  
-  // Sync currentView with URL on component mount
-  useEffect(() => {
-    // If searchParams has a view, update currentView to match
-    if (searchParams.view) {
-      setCurrentView(searchParams.view);
-      console.log(`Synced view from URL: ${searchParams.view}`);
-    }
-  }, [searchParams.view, setCurrentView]);
-  
-  // Check DOM for balance
-  const checkBalance = () => {
-    try {
-      checkCountRef.current += 1;
-      const elements = document.querySelectorAll('div');
-      
-      // Look for numbers followed by "DeFacts"
-      for (let i = 0; i < elements.length; i++) {
-        const el = elements[i];
-        if (el.textContent) {
-          const text = el.textContent.trim();
-          const match = text.match(/(\d[\d,.]+)\s*DeFacts/i);
-          
-          if (match && !text.includes('-- DeFacts')) {
-            if (!hasBalance) {
-              console.log("Found balance:", match[1]);
-            }
-            setHasBalance(true);
-            setDetectedBalance(match[1]);
-            return;
-          }
+// Function to check the entire DOM for any balance indicators
+const checkForDefactsBalance = () => {
+  try {
+    // Check all div elements in the DOM
+    const allElements = document.querySelectorAll('div');
+    let foundEmptyDeFacts = false;
+    let foundBalance = "";
+    let htmlContent = "";
+    
+    // Regular expressions for different balance formats
+    const emptyRegex = /--\s*DeFacts/i;
+    const balanceRegex = /(\d[\d,.]+)\s*DeFacts/i;
+    
+    // Look for balance indicators in each element
+    for (let i = 0; i < allElements.length; i++) {
+      const el = allElements[i];
+      if (el.textContent) {
+        htmlContent = el.textContent.trim();
+        
+        // Check for empty balance indicator
+        if (emptyRegex.test(htmlContent)) {
+          foundEmptyDeFacts = true;
+          console.log("Found empty DeFacts:", htmlContent);
+        }
+        
+        // Check for numeric balance
+        const match = htmlContent.match(balanceRegex);
+        if (match) {
+          foundBalance = match[1]; // This captures the numeric part
+          console.log("Found DeFacts balance:", foundBalance);
         }
       }
-      
-      // No balance found
-      if (hasBalance) {
-        console.log("Balance not found anymore");
-      }
-      setHasBalance(false);
-    } catch (e) {
-      console.error("Check error:", e);
     }
-  };
-  
-  // Set up balance checking
-  useEffect(() => {
-    // Check immediately
-    checkBalance();
     
-    // Set up periodic checking
-    const interval = setInterval(checkBalance, 1000);
-    
-    // Set up DOM observer
-    const observer = new MutationObserver(checkBalance);
-    observer.observe(document.body, { 
-      childList: true, 
-      subtree: true,
-      characterData: true
-    });
-    
-    return () => {
-      clearInterval(interval);
-      observer.disconnect();
-    };
-  }, []);
-  
-  // Handle redirection
-  useEffect(() => {
-    if (!hasBalance && currentView !== 'chat') {
-      const redirectUrl = '/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat';
-      router.push(redirectUrl);
-      
-      // Also update currentView to match the redirect
-      setCurrentView('chat');
-      console.log("Redirecting to chat and updating current view");
+    // If we explicitly found a balance, that takes precedence
+    if (foundBalance !== "") {
+      return { hasBalance: true, balance: foundBalance };
     }
-  }, [hasBalance, currentView, router, setCurrentView]);
-  
-  // Navigation items with handlers
-  const navItems = hasBalance ? FULL_NAV : CHAT_ONLY_NAV;
-  const navigationWithHandlers = navItems.map(item => ({
-    ...item,
-    onClick: () => {
-      if (item.href !== 'chat' && !hasBalance) {
-        const redirectUrl = '/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat';
-        router.push(redirectUrl);
-        
-        // Update currentView to chat
-        setCurrentView('chat');
-        console.log(`Redirecting to chat view from ${item.href}`);
-      } else {
-        // Important: Update currentView before navigating
-        setCurrentView(item.href);
-        changeView(item.href, params.walletAddress);
-        console.log(`Changed view to: ${item.href}`);
-      }
-    },
-    // Add "active" property to identify current view for highlighting
-    active: currentView === item.href
-  }));
-  
-  return (
-    <>
-      {/* Debug overlay */}
-      <div 
-        style={{
-          position: 'fixed',
-          bottom: '10px',
-          right: '10px',
-          backgroundColor: 'rgba(0,0,0,0.8)',
-          color: 'white',
-          padding: '10px',
-          borderRadius: '4px',
-          fontSize: '12px',
-          fontFamily: 'monospace',
-          zIndex: 9999
-        }}
-      >
-        <div>Navigation: {hasBalance ? 'FULL' : 'LIMITED'}</div>
-        <div>DeFacts Balance: {hasBalance ? 'YES' : 'NO'}</div>
-        <div>Detected Balance: {detectedBalance || 'none'}</div>
-        <div>Check Count: {checkCountRef.current}</div>
-        <div>Items: {navItems.map(i => i.name).join(', ')}</div>
-        <div>Current View: {currentView}</div>
-      </div>
     
-      {/* Navigation components */}
-      <MobileNavigation
-        sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
-        navigation={navigationWithHandlers}
-        searchParams={{ view: currentView }}
-        params={params}
-      />
-      <SidebarNavigation
-        navigation={navigationWithHandlers}
-        searchParams={{ view: currentView }}
-        params={params}
-      />
-      <HeaderNavigation setSidebarOpen={setSidebarOpen} />
-    </>
-  );
+    // If we found an empty indicator and no balance, we know there's no balance
+    if (foundEmptyDeFacts) {
+      return { hasBalance: false, balance: "" };
+    }
+    
+    // If we didn't find either, assume no balance (MORE RESTRICTIVE)
+    return { hasBalance: false, balance: "unknown" };
+  } catch (e) {
+    console.error("Error checking DeFacts balance:", e);
+    return { hasBalance: false, balance: "" };
+  }
 };
 
-// Provider wrapper
-const Navigation = (props: NavigationProps) => (
-  <WalletProvider>
-    <NavigationContent {...props} />
-  </WalletProvider>
-);
+// This is the inner component that uses the wallet hook
+const NavigationContent = ({
+    params,
+    searchParams
+}: NavigationProps) => {
+    const router = useRouter();
+    const [sidebarOpen, setSidebarOpen] = useState(false);
+    const { currentView, changeView } = usePersistentView('tokens');
+    
+    // Get all wallet state
+    const { isConnected, publicKey } = useWallet();
+    
+    // IMPORTANT STATE: Track if full navigation should be shown
+    const [showFullNavigation, setShowFullNavigation] = useState(false);
+    
+    // Debug component state
+    const [debugInfo, setDebugInfo] = useState({
+      showFullNav: false,
+      hasWalletBalance: false,
+      foundBalance: "",
+      navigationItems: CHAT_ONLY_NAV.map(item => item.name),
+      checkCount: 0
+    });
+    
+    // Track if we have a confirmed DeFacts balance and the detected value
+    const [hasDeFacts, setHasDeFacts] = useState(false);
+    const [detectedBalance, setDetectedBalance] = useState("");
+    const checkCountRef = useRef(0);
+    
+    // Set up frequent balance checks and DOM observer
+    useEffect(() => {
+      if (typeof window === 'undefined') return;
+      
+      // Function to run the balance check
+      const runBalanceCheck = () => {
+        checkCountRef.current += 1;
+        const { hasBalance, balance } = checkForDefactsBalance();
+        
+        // Only update state if there's a change to avoid re-renders
+        if (hasBalance !== hasDeFacts || balance !== detectedBalance) {
+          console.log("Balance check update:", { hasBalance, balance, checkCount: checkCountRef.current });
+          
+          // Update our state
+          setHasDeFacts(hasBalance);
+          setDetectedBalance(balance);
+          
+          // THE KEY PART: Update navigation state based on balance
+          // We only need wallet connected AND balance
+          const shouldShowFullNav = hasBalance;
+          setShowFullNavigation(shouldShowFullNav);
+          
+          // CRITICAL: Update debug info consistently with our state
+          setDebugInfo(prev => ({
+            ...prev,
+            showFullNav: shouldShowFullNav,
+            hasWalletBalance: hasBalance,
+            foundBalance: balance,
+            navigationItems: shouldShowFullNav ? FULL_NAV.map(item => item.name) : CHAT_ONLY_NAV.map(item => item.name),
+            checkCount: checkCountRef.current
+          }));
+        } else if (checkCountRef.current % 5 === 0) {
+          // Just update the check count periodically
+          setDebugInfo(prev => ({ ...prev, checkCount: checkCountRef.current }));
+        }
+      };
+      
+      // Run initial check
+      runBalanceCheck();
+      
+      // Set up interval to check frequently
+      const checkInterval = setInterval(runBalanceCheck, 500); // Check every 500ms
+      
+      // Set up mutation observer to detect DOM changes
+      const observer = new MutationObserver(() => {
+        runBalanceCheck();
+      });
+      
+      // Start observing the entire document for changes
+      observer.observe(document.body, { 
+        childList: true, 
+        subtree: true,
+        characterData: true, 
+        attributes: true 
+      });
+      
+      // Clean up
+      return () => {
+        clearInterval(checkInterval);
+        observer.disconnect();
+      };
+    }, [hasDeFacts, detectedBalance]);
+    
+    // Handle redirection if navigation is restricted
+    useEffect(() => {
+      if (!showFullNavigation && currentView !== 'chat') {
+        console.log("Redirecting to chat view - navigation restricted");
+        router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
+      }
+    }, [showFullNavigation, currentView, router]);
+    
+    // SIMPLIFIED: Choose navigation based solely on our fullNavigation state
+    const navItems = showFullNavigation ? FULL_NAV : CHAT_ONLY_NAV;
+    
+    // Add onClick handlers and current state to navigation items
+    const navigationWithHandlers = navItems.map(item => ({
+      ...item,
+      current: item.href === currentView, // Add current state based on the currentView
+      onClick: () => {
+        // If trying to navigate away from chat while navigation is restricted
+        if (item.href !== 'chat' && !showFullNavigation) {
+          console.log("Attempt to navigate to restricted area, redirecting to chat");
+          router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
+        } else {
+          // Normal navigation
+          changeView(item.href, params.walletAddress);
+        }
+      }
+    }));
+    
+    return (
+      <>
+        {/* Debug overlay */}
+        <div 
+          style={{
+            position: 'fixed',
+            bottom: '10px',
+            right: '10px',
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            color: 'white',
+            padding: '10px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            fontFamily: 'monospace',
+            zIndex: 9999
+          }}
+        >
+          <div>Navigation: {debugInfo.showFullNav ? 'FULL' : 'LIMITED'}</div>
+          <div>DeFacts Balance: {debugInfo.hasWalletBalance ? 'YES' : 'NO'}</div>
+          <div>Detected Balance: {debugInfo.foundBalance || 'none'}</div>
+          <div>Check Count: {debugInfo.checkCount}</div>
+          <div>Items: {debugInfo.navigationItems.join(', ')}</div>
+          <div>Current View: {currentView}</div>
+        </div>
+      
+        {/* Mobile navigation */}
+        <MobileNavigation
+          sidebarOpen={sidebarOpen}
+          setSidebarOpen={setSidebarOpen}
+          navigation={navigationWithHandlers}
+          searchParams={{ view: currentView }}
+          params={params}
+        />
+
+        {/* Sidebar navigation */}
+        <SidebarNavigation
+          navigation={navigationWithHandlers}
+          searchParams={{ view: currentView }}
+          params={params}
+        />
+
+        {/* Navbar */}
+        <HeaderNavigation setSidebarOpen={setSidebarOpen} />
+      </>
+    );
+};
+
+// This is the main component that provides the wallet context
+const Navigation = (props: NavigationProps) => {
+  return (
+    <WalletProvider>
+      <NavigationContent {...props} />
+    </WalletProvider>
+  );
+};
 
 export default Navigation;
