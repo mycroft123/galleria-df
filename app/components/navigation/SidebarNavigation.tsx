@@ -25,6 +25,10 @@ const SidebarNavigation = ({
     onNavigate,
     params,
 }: SidebarNavigationProps) => {
+    // Filter out "Analysis" and "Tokens", and replace "NFTs" with "Mining"
+    const filteredNavigation = navigation.filter(item => item.name !== "Analysis" && item.name !== "Tokens")
+        .map(item => item.name === "Nfts" ? {...item, name: "Mining"} : item);
+    
     return (
         <div className="hidden bg-black bg-opacity-40 backdrop-blur-sm lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:block lg:w-20 lg:overflow-y-auto lg:pb-4">
             <div className="flex h-16 shrink-0 items-center justify-center">
@@ -32,7 +36,7 @@ const SidebarNavigation = ({
             </div>
             <nav className="mt-8">
                 <ul role="list" className="flex flex-col items-center space-y-4">
-                    {navigation.map((item) => (
+                    {filteredNavigation.map((item) => (
                         <li key={item.name} className="w-full px-2">
                             <button
                                 onClick={() => onNavigate(item.href)}
@@ -53,7 +57,9 @@ const SidebarNavigation = ({
                                     aria-hidden="true"
                                 />
                                 <span className="text-xs font-base mt-1">
-                                    {item.href === "url" ? "URL" : item.href.charAt(0).toUpperCase() + item.href.slice(1)}
+                                    {item.href === "url" ? "URL" : 
+                                     item.name === "Mining" ? "Mining" : 
+                                     item.href.charAt(0).toUpperCase() + item.href.slice(1)}
                                 </span>
                                 <span className="sr-only">{item.name}</span>
                             </button>
