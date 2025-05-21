@@ -51,7 +51,7 @@ const HeaderNavigation = ({ setSidebarOpen }: HeaderNavigationProps) => {
           {/* Right side - Debug info, DeFacts Balance, and Wallet balance */}
           <div className="flex items-center gap-x-2 sm:flex lg:gap-x-4">
             {/* Add wallet debug component */}
-            <WalletDebug />
+            {/*<WalletDebug />*/}
             
             {/* Add DefactsBalance component */}
             <DefactsBalance />
