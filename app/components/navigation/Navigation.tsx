@@ -36,33 +36,30 @@ const Navigation = ({
     const router = useRouter();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { currentView, changeView } = usePersistentView('tokens');
-    const { isConnected, publicKey, tokenBalance } = useWallet();
+    const { isConnected, publicKey, tokenBalance, isLoading } = useWallet();
     
-    // Check authentication status and redirect if needed
+    // Check authentication and redirect if needed
     useEffect(() => {
-      // If not viewing chat and not authenticated
-      if (
-        currentView !== 'chat' && 
-        (!isConnected || !publicKey || tokenBalance === null || tokenBalance === 0)
-      ) {
-        // Redirect to the default portfolio with chat view
+      // Skip check if wallet state is still loading
+      if (isLoading) return;
+      
+      // If viewing something other than chat and not authenticated
+      if (currentView !== 'chat' && (!isConnected || !publicKey)) {
+        // Redirect to default portfolio with chat view
         router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
       }
-    }, [currentView, isConnected, publicKey, tokenBalance, router]);
+    }, [currentView, isConnected, publicKey, isLoading, router]);
 
-    // Create navigation items with auth-aware handler
+    // Add auth check to navigation handler
     const navigationWithHandler = navigation.map(item => ({
       ...item,
       onClick: () => {
-        // If trying to navigate away from chat without being authenticated
-        if (
-          item.href !== 'chat' && 
-          (!isConnected || !publicKey || tokenBalance === null || tokenBalance === 0)
-        ) {
-          // Force redirect to chat view
+        // If trying to navigate to a view other than chat while not authenticated
+        if (item.href !== 'chat' && (!isConnected || !publicKey)) {
+          // Force redirect to the default portfolio chat view
           router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
         } else {
-          // Otherwise proceed with normal navigation
+          // Otherwise, normal navigation
           changeView(item.href, params.walletAddress);
         }
       }
