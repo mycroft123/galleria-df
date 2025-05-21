@@ -49,20 +49,55 @@ const NavigationContent = ({
     const { currentView, changeView } = usePersistentView('tokens');
     
     // Get all wallet state
-    const { tokenBalance, isConnected, publicKey, isLoading } = useWallet();
+    const { isConnected, publicKey } = useWallet();
     
     // Debug component state
     const [debugInfo, setDebugInfo] = useState({
       showFullNav: false,
-      tokenBalance: null as number | null,
-      hasStrict: false,
+      hasWalletBalance: false,
       navigationItems: [] as string[]
     });
     
-    // Make a very strict check for token balance
-    const hasStrictTokenBalance = typeof tokenBalance === 'number' && tokenBalance > 0;
+    // Track if we have a confirmed DeFacts balance
+    const [hasDeFacts, setHasDeFacts] = useState(false);
     
-    // Update navigation items based on token balance
+    // Check for DeFacts balance on component mount and when wallet state changes
+    useEffect(() => {
+      // This should check for the "-- DeFacts" presence in the UI
+      // We'll use a timeout to allow the UI to render
+      const checkTimer = setTimeout(() => {
+        try {
+          // Try to find elements that contain "-- DeFacts"
+          const elements = document.getElementsByClassName('rounded-full');
+          let foundEmptyDeFacts = false;
+          
+          for (let i = 0; i < elements.length; i++) {
+            const el = elements[i];
+            if (el.textContent && el.textContent.includes('-- DeFacts')) {
+              foundEmptyDeFacts = true;
+              break;
+            }
+          }
+          
+          // If we didn't find "-- DeFacts", then assume we have a balance
+          const hasBalance = !foundEmptyDeFacts && isConnected && publicKey;
+          setHasDeFacts(hasBalance);
+          
+          console.log("DeFacts balance check:", { 
+            foundEmptyDeFacts,
+            hasBalance,
+            isConnected,
+            hasPublicKey: !!publicKey
+          });
+        } catch (e) {
+          console.error("Error checking DeFacts balance:", e);
+        }
+      }, 1000);
+      
+      return () => clearTimeout(checkTimer);
+    }, [isConnected, publicKey]);
+    
+    // Update navigation items based on DeFacts balance
     useEffect(() => {
       console.log(`
       --------------------------
@@ -70,51 +105,42 @@ const NavigationContent = ({
       --------------------------
       isConnected: ${isConnected}
       publicKey: ${publicKey ? `${publicKey.slice(0, 4)}...${publicKey.slice(-4)}` : 'None'}
-      tokenBalance: ${tokenBalance}
-      tokenBalance type: ${typeof tokenBalance}
-      hasStrictTokenBalance: ${hasStrictTokenBalance}
+      hasDeFacts: ${hasDeFacts}
       --------------------------
       `);
       
-      if (hasStrictTokenBalance) {
-        console.log("✅ SHOWING FULL NAVIGATION - Has tokens");
+      if (hasDeFacts) {
+        console.log("✅ SHOWING FULL NAVIGATION - Has DeFacts balance");
         setDebugInfo({
           showFullNav: true,
-          tokenBalance: tokenBalance,
-          hasStrict: hasStrictTokenBalance,
+          hasWalletBalance: hasDeFacts,
           navigationItems: FULL_NAV.map(item => item.name)
         });
-        
-        // If still loading but navigation is not chat, redirect
-        if (currentView !== 'chat') {
-          // router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
-        }
       } else {
-        console.log("❌ SHOWING LIMITED NAVIGATION - No tokens");
+        console.log("❌ SHOWING LIMITED NAVIGATION - No DeFacts balance");
         setDebugInfo({
           showFullNav: false,
-          tokenBalance: tokenBalance,
-          hasStrict: hasStrictTokenBalance,
+          hasWalletBalance: hasDeFacts,
           navigationItems: CHAT_ONLY_NAV.map(item => item.name)
         });
         
         // If current view is not chat, redirect to chat
         if (currentView !== 'chat') {
-          console.log("Redirecting to chat view - no tokens");
+          console.log("Redirecting to chat view - no DeFacts balance");
           router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
         }
       }
-    }, [tokenBalance, hasStrictTokenBalance, currentView, router]);
+    }, [hasDeFacts, isConnected, publicKey, currentView, router]);
     
-    // Choose navigation based on token balance - use the strict check
-    const navItems = hasStrictTokenBalance ? FULL_NAV : CHAT_ONLY_NAV;
+    // Choose navigation based on DeFacts balance
+    const navItems = hasDeFacts ? FULL_NAV : CHAT_ONLY_NAV;
     
     // Add onClick handlers to navigation items
     const navigationWithHandlers = navItems.map(item => ({
       ...item,
       onClick: () => {
-        // If trying to navigate away from chat without tokens
-        if (item.href !== 'chat' && !hasStrictTokenBalance) {
+        // If trying to navigate away from chat without DeFacts balance
+        if (item.href !== 'chat' && !hasDeFacts) {
           console.log("Attempt to navigate to restricted area, redirecting to chat");
           router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
         } else {
@@ -142,8 +168,7 @@ const NavigationContent = ({
           }}
         >
           <div>Navigation: {debugInfo.showFullNav ? 'FULL' : 'LIMITED'}</div>
-          <div>Token Balance: {debugInfo.tokenBalance !== null ? debugInfo.tokenBalance : 'null'}</div>
-          <div>Strict Check: {debugInfo.hasStrict ? 'PASS' : 'FAIL'}</div>
+          <div>DeFacts Balance: {debugInfo.hasWalletBalance ? 'YES' : 'NO'}</div>
           <div>Items: {debugInfo.navigationItems.join(', ')}</div>
           <div>Current View: {currentView}</div>
         </div>
