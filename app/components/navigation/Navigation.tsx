@@ -47,40 +47,74 @@ const NavigationContent = ({
     const router = useRouter();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { currentView, changeView } = usePersistentView('tokens');
-    const { tokenBalance } = useWallet();
     
-    // IMPORTANT: Start with limited navigation by default
-    const [confirmedHasTokens, setConfirmedHasTokens] = useState(false);
+    // Get all wallet state
+    const { tokenBalance, isConnected, publicKey, isLoading } = useWallet();
     
-    // Check and update token balance status
+    // Debug component state
+    const [debugInfo, setDebugInfo] = useState({
+      showFullNav: false,
+      tokenBalance: null as number | null,
+      hasStrict: false,
+      navigationItems: [] as string[]
+    });
+    
+    // Make a very strict check for token balance
+    const hasStrictTokenBalance = typeof tokenBalance === 'number' && tokenBalance > 0;
+    
+    // Update navigation items based on token balance
     useEffect(() => {
-      console.log("Token balance updated:", tokenBalance);
+      console.log(`
+      --------------------------
+      WALLET STATE:
+      --------------------------
+      isConnected: ${isConnected}
+      publicKey: ${publicKey ? `${publicKey.slice(0, 4)}...${publicKey.slice(-4)}` : 'None'}
+      tokenBalance: ${tokenBalance}
+      tokenBalance type: ${typeof tokenBalance}
+      hasStrictTokenBalance: ${hasStrictTokenBalance}
+      --------------------------
+      `);
       
-      // Only set to true if we positively confirm there are tokens
-      if (tokenBalance && tokenBalance > 0) {
-        console.log("✅ CONFIRMED: User has tokens, enabling full navigation");
-        setConfirmedHasTokens(true);
-      } else {
-        console.log("❌ NO TOKENS CONFIRMED: Limited to chat only");
-        setConfirmedHasTokens(false);
+      if (hasStrictTokenBalance) {
+        console.log("✅ SHOWING FULL NAVIGATION - Has tokens");
+        setDebugInfo({
+          showFullNav: true,
+          tokenBalance: tokenBalance,
+          hasStrict: hasStrictTokenBalance,
+          navigationItems: FULL_NAV.map(item => item.name)
+        });
         
-        // If not on chat view, redirect to chat
+        // If still loading but navigation is not chat, redirect
         if (currentView !== 'chat') {
-          console.log("Redirecting to chat view");
+          // router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
+        }
+      } else {
+        console.log("❌ SHOWING LIMITED NAVIGATION - No tokens");
+        setDebugInfo({
+          showFullNav: false,
+          tokenBalance: tokenBalance,
+          hasStrict: hasStrictTokenBalance,
+          navigationItems: CHAT_ONLY_NAV.map(item => item.name)
+        });
+        
+        // If current view is not chat, redirect to chat
+        if (currentView !== 'chat') {
+          console.log("Redirecting to chat view - no tokens");
           router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
         }
       }
-    }, [tokenBalance, currentView, router]);
+    }, [tokenBalance, hasStrictTokenBalance, currentView, router]);
     
-    // CRITICAL: Start with chat-only navigation, then expand only when confirmed
-    const navItems = confirmedHasTokens ? FULL_NAV : CHAT_ONLY_NAV;
+    // Choose navigation based on token balance - use the strict check
+    const navItems = hasStrictTokenBalance ? FULL_NAV : CHAT_ONLY_NAV;
     
     // Add onClick handlers to navigation items
     const navigationWithHandlers = navItems.map(item => ({
       ...item,
       onClick: () => {
-        // If trying to navigate away from chat without confirmed tokens
-        if (item.href !== 'chat' && !confirmedHasTokens) {
+        // If trying to navigate away from chat without tokens
+        if (item.href !== 'chat' && !hasStrictTokenBalance) {
           console.log("Attempt to navigate to restricted area, redirecting to chat");
           router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
         } else {
@@ -90,15 +124,30 @@ const NavigationContent = ({
       }
     }));
     
-    console.log("Navigation status:", {
-      confirmedHasTokens,
-      tokenBalance,
-      navItems: navigationWithHandlers.map(item => item.name),
-      currentView
-    });
-
     return (
       <>
+        {/* Debug overlay */}
+        <div 
+          style={{
+            position: 'fixed',
+            bottom: '10px',
+            right: '10px',
+            backgroundColor: 'rgba(0,0,0,0.8)',
+            color: 'white',
+            padding: '10px',
+            borderRadius: '4px',
+            fontSize: '12px',
+            fontFamily: 'monospace',
+            zIndex: 9999
+          }}
+        >
+          <div>Navigation: {debugInfo.showFullNav ? 'FULL' : 'LIMITED'}</div>
+          <div>Token Balance: {debugInfo.tokenBalance !== null ? debugInfo.tokenBalance : 'null'}</div>
+          <div>Strict Check: {debugInfo.hasStrict ? 'PASS' : 'FAIL'}</div>
+          <div>Items: {debugInfo.navigationItems.join(', ')}</div>
+          <div>Current View: {currentView}</div>
+        </div>
+      
         {/* Mobile navigation */}
         <MobileNavigation
           sidebarOpen={sidebarOpen}
