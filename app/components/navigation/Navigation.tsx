@@ -55,36 +55,54 @@ const NavigationContent = ({
     const [debugInfo, setDebugInfo] = useState({
       showFullNav: false,
       hasWalletBalance: false,
+      foundBalance: "",
       navigationItems: [] as string[]
     });
     
     // Track if we have a confirmed DeFacts balance
     const [hasDeFacts, setHasDeFacts] = useState(false);
+    const [detectedBalance, setDetectedBalance] = useState("");
     
     // Check for DeFacts balance on component mount and when wallet state changes
     useEffect(() => {
-      // This should check for the "-- DeFacts" presence in the UI
+      // This should check for a numeric balance followed by "DeFacts"
       // We'll use a timeout to allow the UI to render
       const checkTimer = setTimeout(() => {
         try {
-          // Try to find elements that contain "-- DeFacts"
+          // Try to find elements that contain numeric balance + "DeFacts"
           const elements = document.getElementsByClassName('rounded-full');
           let foundEmptyDeFacts = false;
+          let foundBalance = "";
+          
+          // Regular expression to match a number followed by "DeFacts"
+          const balanceRegex = /([0-9,.]+)\s*DeFacts/;
           
           for (let i = 0; i < elements.length; i++) {
             const el = elements[i];
-            if (el.textContent && el.textContent.includes('-- DeFacts')) {
-              foundEmptyDeFacts = true;
-              break;
+            if (el.textContent) {
+              // Check for "-- DeFacts" first
+              if (el.textContent.includes('-- DeFacts')) {
+                foundEmptyDeFacts = true;
+                break;
+              }
+              
+              // Check for numeric balance + "DeFacts"
+              const match = el.textContent.match(balanceRegex);
+              if (match) {
+                foundBalance = match[1]; // This captures the numeric part
+                break;
+              }
             }
           }
           
-          // If we didn't find "-- DeFacts", then assume we have a balance
-          const hasBalance = !foundEmptyDeFacts && isConnected && publicKey;
+          // If we found a balance or didn't find "-- DeFacts"
+          const hasBalance = (foundBalance !== "" || !foundEmptyDeFacts) && isConnected && publicKey;
           setHasDeFacts(hasBalance);
+          setDetectedBalance(foundBalance);
           
           console.log("DeFacts balance check:", { 
             foundEmptyDeFacts,
+            foundBalance,
             hasBalance,
             isConnected,
             hasPublicKey: !!publicKey
@@ -106,6 +124,7 @@ const NavigationContent = ({
       isConnected: ${isConnected}
       publicKey: ${publicKey ? `${publicKey.slice(0, 4)}...${publicKey.slice(-4)}` : 'None'}
       hasDeFacts: ${hasDeFacts}
+      detectedBalance: ${detectedBalance}
       --------------------------
       `);
       
@@ -114,6 +133,7 @@ const NavigationContent = ({
         setDebugInfo({
           showFullNav: true,
           hasWalletBalance: hasDeFacts,
+          foundBalance: detectedBalance,
           navigationItems: FULL_NAV.map(item => item.name)
         });
       } else {
@@ -121,6 +141,7 @@ const NavigationContent = ({
         setDebugInfo({
           showFullNav: false,
           hasWalletBalance: hasDeFacts,
+          foundBalance: detectedBalance,
           navigationItems: CHAT_ONLY_NAV.map(item => item.name)
         });
         
@@ -130,7 +151,7 @@ const NavigationContent = ({
           router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
         }
       }
-    }, [hasDeFacts, isConnected, publicKey, currentView, router]);
+    }, [hasDeFacts, detectedBalance, isConnected, publicKey, currentView, router]);
     
     // Choose navigation based on DeFacts balance
     const navItems = hasDeFacts ? FULL_NAV : CHAT_ONLY_NAV;
@@ -169,6 +190,7 @@ const NavigationContent = ({
         >
           <div>Navigation: {debugInfo.showFullNav ? 'FULL' : 'LIMITED'}</div>
           <div>DeFacts Balance: {debugInfo.hasWalletBalance ? 'YES' : 'NO'}</div>
+          <div>Detected Balance: {debugInfo.foundBalance || 'none'}</div>
           <div>Items: {debugInfo.navigationItems.join(', ')}</div>
           <div>Current View: {currentView}</div>
         </div>
