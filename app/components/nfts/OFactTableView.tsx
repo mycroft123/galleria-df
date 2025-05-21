@@ -268,11 +268,191 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
     await fetchOFactNFTs();
   };
 
+
+// Update this part of your frontend code that handles mining and polling
+
 // Define the API base URL
 const API_BASE_URL = "https://df-backend-13-production.up.railway.app";
 const API_FACTS_URL = `${API_BASE_URL}/api/facts-to-nfts`;
 
-// Updated handleMining function to explicitly NOT use credentials
+// Enhanced startJobStatusPolling function with better logging
+const startJobStatusPolling = (jobId: string, nftId: string) => {
+  // Clear any existing interval for this NFT
+  if (pollingIntervals[nftId]) {
+    clearInterval(pollingIntervals[nftId]);
+  }
+  
+  // Set initial progress to indicate start
+  setProgressPercent(prev => ({ ...prev, [nftId]: 5 }));
+  
+  // Reset failure counter for this NFT
+  setStatusCheckFailures(prev => ({ ...prev, [nftId]: 0 }));
+  
+  console.log(`Starting to poll job status for jobId: ${jobId}, nftId: ${nftId}`);
+  
+  const interval = setInterval(async () => {
+    try {
+      // Construct the status URL with the jobId
+      const statusUrl = `${API_FACTS_URL}?jobId=${jobId}`;
+      console.log(`Polling job status: ${statusUrl}`);
+      
+      try {
+        // Use fetch with explicit mode and no credentials
+        const response = await fetch(statusUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'application/json'
+          },
+          mode: 'cors',
+          credentials: 'omit'
+        });
+        
+        // Log response status for debugging
+        console.log(`Status poll response status: ${response.status}`);
+        
+        if (!response.ok) {
+          if (response.status === 404) {
+            console.warn(`Job ${jobId} not found or API endpoint issue`);
+            throw new Error(`Job status check returned 404 for jobId ${jobId}`);
+          }
+          
+          const contentType = response.headers.get('content-type');
+          if (contentType && contentType.includes('text/html')) {
+            console.error('Received HTML instead of JSON for job status');
+            throw new Error('API returned HTML instead of JSON');
+          }
+          
+          throw new Error(`Error checking job status: ${response.status}`);
+        }
+        
+        // Verify we have JSON response
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+          console.warn('Response is not JSON:', contentType);
+        }
+        
+        // Get job status from response
+        const jobStatus = await response.json();
+        console.log(`Job status for ${nftId}:`, jobStatus);
+        
+        // Reset failures counter on successful request
+        setStatusCheckFailures(prev => ({ ...prev, [nftId]: 0 }));
+        
+        // Update progress based on job status
+        if (jobStatus.progress) {
+          let progressValue = 5; // Default starting value
+          
+          if (jobStatus.progress.currentStep === 'Extracting content from URL') {
+            progressValue = 15;
+          } else if (jobStatus.progress.currentStep === 'Processing content with AI') {
+            // Calculate based on sentences processed if available
+            if (jobStatus.progress.processedSentences && jobStatus.progress.totalSentences) {
+              progressValue = 20 + Math.floor((jobStatus.progress.processedSentences / jobStatus.progress.totalSentences) * 40);
+            } else {
+              progressValue = 35; // Default mid-processing
+            }
+          } else if (jobStatus.progress.currentStep === 'Creating NFTs') {
+            // Calculate based on batches if available
+            if (jobStatus.progress.currentBatch && jobStatus.progress.totalBatches) {
+              progressValue = 60 + Math.floor((jobStatus.progress.currentBatch / jobStatus.progress.totalBatches) * 35);
+            } else {
+              progressValue = 75; // Default late-processing
+            }
+          }
+          
+          console.log(`Setting progress for ${nftId} to ${progressValue}%`);
+          setProgressPercent(prev => ({ ...prev, [nftId]: progressValue }));
+        }
+        
+        // Handle completed job
+        if (jobStatus.status === 'completed') {
+          console.log(`Job ${jobId} completed successfully!`);
+          
+          // Mining complete - update UI state
+          setMiningState(prev => ({ ...prev, [nftId]: 'mining_complete' }));
+          setProgressPercent(prev => ({ ...prev, [nftId]: 100 }));
+          
+          // Store the extracted AFACTs for display in the UI
+          if (jobStatus.results?.mintedFacts) {
+            console.log(`Storing ${jobStatus.results.mintedFacts.length} minted facts for display`);
+            setExtractedFacts(prev => ({
+              ...prev,
+              [nftId]: jobStatus.results.mintedFacts
+            }));
+          } else {
+            console.warn('Completed job has no mintedFacts in results');
+          }
+          
+          // Stop polling
+          clearInterval(interval);
+          console.log(`Stopped polling for completed job ${jobId}`);
+          
+          // Switch to the "Mining Complete" tab when done
+          setActiveTab('mining_complete');
+        } 
+        // Handle failed job
+        else if (jobStatus.status === 'failed') {
+          console.error(`Job ${jobId} failed: ${jobStatus.error || 'Unknown error'}`);
+          
+          // Handle failure
+          setMiningState(prev => ({ ...prev, [nftId]: 'open_request' })); // Revert to open state on error
+          setMiningErrors(prev => ({ 
+            ...prev, 
+            [nftId]: jobStatus.error || 'Mining failed' 
+          }));
+          
+          // Stop polling
+          clearInterval(interval);
+          console.log(`Stopped polling for failed job ${jobId}`);
+          
+          // Switch back to "Open Requests" tab on failure
+          setActiveTab('open_requests');
+        }
+        // Job is still processing
+        else {
+          console.log(`Job ${jobId} still processing. Current status: ${jobStatus.status}`);
+        }
+      } catch (fetchError) {
+        console.error('Error fetching job status:', fetchError);
+        
+        // Increment failure counter
+        setStatusCheckFailures(prev => {
+          const currentFailures = (prev[nftId] || 0) + 1;
+          console.log(`Status check failure count for ${nftId}: ${currentFailures}`);
+          return { ...prev, [nftId]: currentFailures };
+        });
+        
+        // Get the current failure count
+        const currentFailures = statusCheckFailures[nftId] || 0;
+        
+        // After 5 consecutive failures, stop polling and show error
+        if (currentFailures >= 5) {
+          console.error(`Stopping status polling after ${currentFailures} failures`);
+          setMiningState(prev => ({ ...prev, [nftId]: 'open_request' }));
+          setMiningErrors(prev => ({
+            ...prev,
+            [nftId]: 'Lost connection to mining service after multiple attempts'
+          }));
+          clearInterval(interval);
+          // Switch back to "Open Requests" tab after failures
+          setActiveTab('open_requests');
+        }
+      }
+    } catch (outerError) {
+      console.error('Unhandled error in status polling:', outerError);
+    }
+  }, 3000); // Poll every 3 seconds
+  
+  // Store the interval ID to clear it later if needed
+  setPollingIntervals(prev => ({
+    ...prev,
+    [nftId]: interval
+  }));
+  
+  console.log(`Set up polling interval for ${nftId}`, interval);
+};
+
+// Updated handleMining function
 const handleMining = async (nftId: string) => {
   try {
     // Find the OFACT NFT
@@ -317,68 +497,59 @@ const handleMining = async (nftId: string) => {
     // Main API call to start fact extraction
     console.log(`Calling API at ${API_FACTS_URL} with URL: ${url}`);
     
-    try {
-      // Updated fetch call that EXPLICITLY does not send cookies
-      const response = await fetch(API_FACTS_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          url: url,
-          ...(nftId && { parentOfactId: nftId })
-        }),
-        mode: 'cors',
-        credentials: 'omit'  // Explicitly tell browser not to send cookies
-      });
+    // Use fetch with enhanced error handling
+    const response = await fetch(API_FACTS_URL, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        url: url,
+        ...(nftId && { parentOfactId: nftId })
+      }),
+      mode: 'cors',
+      credentials: 'omit'  // Explicitly don't send cookies
+    });
+    
+    // Log full response for debugging
+    console.log(`API response status: ${response.status}`);
+    console.log('API response headers:', Object.fromEntries([...response.headers.entries()]));
+    
+    // Handle non-OK responses with detailed error information
+    if (!response.ok) {
+      console.error('Response status:', response.status);
+      console.error('Response status text:', response.statusText);
       
-      // Rest of the function remains the same
-      if (!response.ok) {
-        console.error('Response status:', response.status);
-        console.error('Response status text:', response.statusText);
-        
-        const contentType = response.headers.get('content-type');
-        console.error('Content-Type:', contentType);
-        
-        // Log more headers for debugging
-        const headers = {};
-        response.headers.forEach((value, key) => {
-          headers[key] = value;
-        });
-        console.error('All headers:', headers);
-        
-        if (contentType && contentType.includes('text/html')) {
-          const text = await response.text();
-          console.error('HTML Response (first 500 chars):', text.substring(0, 500));
-          throw new Error(`Received HTML instead of JSON (Status: ${response.status})`);
+      const contentType = response.headers.get('content-type');
+      console.error('Content-Type:', contentType);
+      
+      // Get detailed error information
+      let errorText;
+      try {
+        if (contentType && contentType.includes('application/json')) {
+          const errorData = await response.json();
+          errorText = JSON.stringify(errorData);
         } else {
-          try {
-            const errorData = await response.json();
-            console.error('Error data:', errorData);
-            throw new Error(errorData.error || errorData.message || `API error (${response.status})`);
-          } catch (e) {
-            const text = await response.text();
-            console.error('Response text:', text);
-            throw new Error(`Failed to parse error response (Status: ${response.status})`);
-          }
+          errorText = await response.text();
         }
+      } catch (e) {
+        errorText = 'Unable to parse error response';
       }
       
-      // Successfully got a response, try to parse it
-      const result = await response.json();
-      console.log('Mining started successfully:', result);
-      
-      if (result.success && result.jobId) {
-        // Start polling for job status
-        startJobStatusPolling(result.jobId, nftId);
-        // Switch to the "In Progress" tab
-        setActiveTab('in_progress');
-      } else {
-        throw new Error('Missing jobId in API response');
-      }
-    } catch (error) {
-      console.error('Error during API call:', error);
-      throw error;
+      throw new Error(`API error (${response.status}): ${errorText}`);
+    }
+    
+    // Successfully got a response, parse it
+    const result = await response.json();
+    console.log('Mining started successfully:', result);
+    
+    if (result.success && result.jobId) {
+      // Start polling for job status
+      startJobStatusPolling(result.jobId, nftId);
+      // Switch to the "In Progress" tab
+      setActiveTab('in_progress');
+    } else {
+      throw new Error('Missing jobId in API response');
     }
   } catch (error) {
     console.error('Error starting mining process:', error);
@@ -391,78 +562,6 @@ const handleMining = async (nftId: string) => {
   }
 };
 
-// Enhanced startJobStatusPolling function to not use credentials
-const startJobStatusPolling = (jobId: string, nftId: string) => {
-  // Clear any existing interval for this NFT
-  if (pollingIntervals[nftId]) {
-    clearInterval(pollingIntervals[nftId]);
-  }
-  
-  // Set initial progress to indicate start
-  setProgressPercent(prev => ({ ...prev, [nftId]: 5 }));
-  
-  // Reset failure counter for this NFT
-  setStatusCheckFailures(prev => ({ ...prev, [nftId]: 0 }));
-  
-  const interval = setInterval(async () => {
-    try {
-      // Use the correct API URL
-      const statusUrl = `${API_FACTS_URL}?jobId=${jobId}`;
-      
-      try {
-        const response = await fetch(statusUrl, {
-          headers: {
-            'Accept': 'application/json'
-          },
-          mode: 'cors',
-          credentials: 'omit'  // Explicitly don't send cookies
-        });
-        
-        // Rest of the function remains the same
-        if (!response.ok) {
-          if (response.status === 404) {
-            console.warn(`Job ${jobId} not found or API endpoint issue`);
-            throw new Error(`Job status check returned 404 for jobId ${jobId}`);
-          }
-          
-          const contentType = response.headers.get('content-type');
-          if (contentType && contentType.includes('text/html')) {
-            console.error('Received HTML instead of JSON for job status');
-            throw new Error('API returned HTML instead of JSON');
-          }
-          
-          throw new Error(`Error checking job status: ${response.status}`);
-        }
-        
-        // Verify we have JSON response
-        const contentType = response.headers.get('content-type');
-        if (!contentType || !contentType.includes('application/json')) {
-          console.warn('Response is not JSON:', contentType);
-        }
-        
-        const jobStatus = await response.json();
-        console.log(`Job status for ${nftId}:`, jobStatus);
-        
-        // Reset failures counter on successful request
-        setStatusCheckFailures(prev => ({ ...prev, [nftId]: 0 }));
-        
-        // Process job status and update UI accordingly
-        // Rest of your existing code...
-        
-      } catch (fetchError) {
-        // Existing error handling code...
-      }
-    } catch (outerError) {
-      console.error('Unhandled error in status polling:', outerError);
-    }
-  }, 3000); // Poll every 3 seconds
-  
-  // Store the interval ID to clear it later if needed
-  setPollingIntervals(prev => ({
-    ...prev,
-    [nftId]: interval
-  }));
-};
 
   // Toggle expanded state for OFACTs in the completed section
   const toggleExpandedOfact = (ofactId: string) => {
