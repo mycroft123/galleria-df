@@ -33,7 +33,7 @@ const CHAT_ONLY_NAV = [
 const FULL_NAV = [
   { name: "Chat", href: "chat", icon: MessageSquare },
   { name: "Analysis", href: "analysis", icon: ScatterChart },
-  { name: "NFTs", href: "nfts", icon: PhotoIcon },
+  { name: "Mining", href: "nfts", icon: PhotoIcon },
   { name: "Portfolio", href: "portfolio", icon: ChartBarIcon },
   { name: "Tokens", href: "tokens", icon: StopCircleIcon },
   { name: "URL Input", href: "url", icon: LinkIcon }
