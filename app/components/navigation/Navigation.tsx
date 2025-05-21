@@ -50,7 +50,7 @@ const checkForDefactsBalance = () => {
     
     // Regular expressions for different balance formats
     const emptyRegex = /--\s*DeFacts/i;
-    const balanceRegex = /(\d[\d,.]+)\s*DeFacts/i;
+    const balanceRegex = /(\d[\d,.]+)\s*DF/i;
     
     // Look for balance indicators in each element
     for (let i = 0; i < allElements.length; i++) {
