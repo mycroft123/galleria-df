@@ -7,7 +7,7 @@ import HeaderNavigation from "./HeaderNavigation";
 import MobileNavigation from "./MobileNavigation";
 import SidebarNavigation from "./SidebarNavigation";
 import { usePersistentView } from "../../hooks/usePersistentView";
-import { useWallet } from '@/app/providers/WalletProvider';
+import { WalletProvider, useWallet } from '@/app/providers/WalletProvider';
 import { MessageSquare, Bot, CircuitBoard, ScatterChart } from "lucide-react";
 
 interface NavigationProps {
@@ -29,7 +29,8 @@ const navigation = [
   { name: "URL Input", href: "url", icon: LinkIcon },
 ];
 
-const Navigation = ({
+// This is the inner component that uses the wallet hook
+const NavigationContent = ({
     params,
     searchParams
 }: NavigationProps) => {
@@ -87,6 +88,15 @@ const Navigation = ({
         <HeaderNavigation setSidebarOpen={setSidebarOpen} />
       </>
     );
+};
+
+// This is the main component that provides the wallet context
+const Navigation = (props: NavigationProps) => {
+  return (
+    <WalletProvider>
+      <NavigationContent {...props} />
+    </WalletProvider>
+  );
 };
 
 export default Navigation;
