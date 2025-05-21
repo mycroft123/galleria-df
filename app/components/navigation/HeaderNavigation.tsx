@@ -40,13 +40,10 @@ const HeaderNavigation = ({ setSidebarOpen }: HeaderNavigationProps) => {
             </button>
           </div>
           
-          {/* Center - Logo and DeFacts text (visible only on mobile) */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center lg:hidden">
-            <div className="h-6 w-6 flex items-center justify-center">
-              <Logo className="h-full w-full" style={{ maxHeight: '12px', maxWidth: '12px' }} />
-            </div>
-            <span className="ml-2 text-white font-semibold text-lg">DeFacts</span>
-          </div>
+        {/* Left - DeFacts text (visible only on mobile) */}
+        <div className="absolute left-4 flex items-center lg:hidden">
+          <span className="text-white font-semibold text-lg">DeFacts</span>
+        </div>
           
           {/* Right side - Debug info, DeFacts Balance, and Wallet balance */}
           <div className="flex items-center gap-x-2 sm:flex lg:gap-x-4">
