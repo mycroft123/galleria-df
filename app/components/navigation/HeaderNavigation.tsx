@@ -57,7 +57,7 @@ const HeaderNavigation = ({ setSidebarOpen }: HeaderNavigationProps) => {
             <DefactsBalance />
             
             {/* Keep the original WalletBalance as last item */}
-            <WalletBalance />
+           {/*  <WalletBalance />*/}
           </div>
         </div>
       </div>
