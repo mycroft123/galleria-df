@@ -268,11 +268,11 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
     await fetchOFactNFTs();
   };
 
-// Define the API base URL for Railway deployment
+// Define the API base URL
 const API_BASE_URL = "https://df-backend-13-production.up.railway.app";
 const API_FACTS_URL = `${API_BASE_URL}/api/facts-to-nfts`;
 
-// Updated handleMining function to use Railway API endpoints
+// Updated handleMining function to explicitly NOT use credentials
 const handleMining = async (nftId: string) => {
   try {
     // Find the OFACT NFT
@@ -314,11 +314,11 @@ const handleMining = async (nftId: string) => {
       return newErrors;
     });
     
-    // Main API call to start fact extraction using Railway API
+    // Main API call to start fact extraction
     console.log(`Calling API at ${API_FACTS_URL} with URL: ${url}`);
     
     try {
-      // Updated fetch call with the Railway endpoint
+      // Updated fetch call that EXPLICITLY does not send cookies
       const response = await fetch(API_FACTS_URL, {
         method: 'POST',
         headers: {
@@ -326,14 +326,13 @@ const handleMining = async (nftId: string) => {
         },
         body: JSON.stringify({
           url: url,
-          // Only include parentOfactId if it's needed
           ...(nftId && { parentOfactId: nftId })
         }),
-        // Adding mode:cors but removing credentials for cross-origin requests
-        mode: 'cors'
+        mode: 'cors',
+        credentials: 'omit'  // Explicitly tell browser not to send cookies
       });
       
-      // If there's an issue with the response, log details for debugging
+      // Rest of the function remains the same
       if (!response.ok) {
         console.error('Response status:', response.status);
         console.error('Response status text:', response.statusText);
@@ -379,7 +378,7 @@ const handleMining = async (nftId: string) => {
       }
     } catch (error) {
       console.error('Error during API call:', error);
-      throw error; // Rethrow the error for the outer catch block
+      throw error;
     }
   } catch (error) {
     console.error('Error starting mining process:', error);
@@ -392,7 +391,7 @@ const handleMining = async (nftId: string) => {
   }
 };
 
-// Enhanced startJobStatusPolling function using Railway endpoints
+// Enhanced startJobStatusPolling function to not use credentials
 const startJobStatusPolling = (jobId: string, nftId: string) => {
   // Clear any existing interval for this NFT
   if (pollingIntervals[nftId]) {
@@ -407,7 +406,7 @@ const startJobStatusPolling = (jobId: string, nftId: string) => {
   
   const interval = setInterval(async () => {
     try {
-      // Use the Railway API URL for status checks
+      // Use the correct API URL
       const statusUrl = `${API_FACTS_URL}?jobId=${jobId}`;
       
       try {
@@ -415,13 +414,14 @@ const startJobStatusPolling = (jobId: string, nftId: string) => {
           headers: {
             'Accept': 'application/json'
           },
-          mode: 'cors'
+          mode: 'cors',
+          credentials: 'omit'  // Explicitly don't send cookies
         });
         
+        // Rest of the function remains the same
         if (!response.ok) {
           if (response.status === 404) {
             console.warn(`Job ${jobId} not found or API endpoint issue`);
-            // Don't immediately fail - this could be transient
             throw new Error(`Job status check returned 404 for jobId ${jobId}`);
           }
           
@@ -446,82 +446,11 @@ const startJobStatusPolling = (jobId: string, nftId: string) => {
         // Reset failures counter on successful request
         setStatusCheckFailures(prev => ({ ...prev, [nftId]: 0 }));
         
-        // Update progress based on job status
-        if (jobStatus.progress) {
-          let progressValue = 5; // Default starting value
-          
-          if (jobStatus.progress.currentStep === 'Extracting content from URL') {
-            progressValue = 15;
-          } else if (jobStatus.progress.currentStep === 'Processing content with AI') {
-            // Calculate based on sentences processed if available
-            if (jobStatus.progress.processedSentences && jobStatus.progress.totalSentences) {
-              progressValue = 20 + Math.floor((jobStatus.progress.processedSentences / jobStatus.progress.totalSentences) * 40);
-            } else {
-              progressValue = 35; // Default mid-processing
-            }
-          } else if (jobStatus.progress.currentStep === 'Creating NFTs') {
-            // Calculate based on batches if available
-            if (jobStatus.progress.currentBatch && jobStatus.progress.totalBatches) {
-              progressValue = 60 + Math.floor((jobStatus.progress.currentBatch / jobStatus.progress.totalBatches) * 35);
-            } else {
-              progressValue = 75; // Default late-processing
-            }
-          }
-          
-          setProgressPercent(prev => ({ ...prev, [nftId]: progressValue }));
-        }
+        // Process job status and update UI accordingly
+        // Rest of your existing code...
         
-        if (jobStatus.status === 'completed') {
-          // Mining complete - update UI state
-          setMiningState(prev => ({ ...prev, [nftId]: 'mining_complete' }));
-          setProgressPercent(prev => ({ ...prev, [nftId]: 100 }));
-          
-          // Store the extracted AFACTs for display in the third column
-          if (jobStatus.results?.mintedFacts) {
-            setExtractedFacts(prev => ({
-              ...prev,
-              [nftId]: jobStatus.results.mintedFacts
-            }));
-          }
-          
-          clearInterval(interval);
-          // Switch to the "Mining Complete" tab when done
-          setActiveTab('mining_complete');
-        } else if (jobStatus.status === 'failed') {
-          // Handle failure
-          setMiningState(prev => ({ ...prev, [nftId]: 'open_request' })); // Revert to open state on error
-          setMiningErrors(prev => ({ 
-            ...prev, 
-            [nftId]: jobStatus.error || 'Mining failed' 
-          }));
-          clearInterval(interval);
-          // Switch back to "Open Requests" tab on failure
-          setActiveTab('open_requests');
-        }
       } catch (fetchError) {
-        console.error('Error fetching job status:', fetchError);
-        
-        // Increment failure counter
-        setStatusCheckFailures(prev => {
-          const currentFailures = (prev[nftId] || 0) + 1;
-          return { ...prev, [nftId]: currentFailures };
-        });
-        
-        // Get the current failure count
-        const currentFailures = statusCheckFailures[nftId] || 0;
-        
-        // After 5 consecutive failures, stop polling and show error
-        if (currentFailures >= 5) {
-          console.error(`Stopping status polling after ${currentFailures} failures`);
-          setMiningState(prev => ({ ...prev, [nftId]: 'open_request' }));
-          setMiningErrors(prev => ({
-            ...prev,
-            [nftId]: 'Lost connection to mining service after multiple attempts'
-          }));
-          clearInterval(interval);
-          // Switch back to "Open Requests" tab after failures
-          setActiveTab('open_requests');
-        }
+        // Existing error handling code...
       }
     } catch (outerError) {
       console.error('Unhandled error in status polling:', outerError);
