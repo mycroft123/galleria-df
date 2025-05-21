@@ -908,9 +908,9 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
       
       {/* Tab Content */}
 {/* Tab Content */}
-<div className="tab-content mt-4">
+<div className="tab-content mt-4" style={{ position: 'relative' }}>
   {/* Open Requests Tab */}
-  <div className={activeTab === 'open_requests' ? 'block' : 'hidden'}>
+  <div className={activeTab === 'open_requests' ? 'block' : 'hidden'} style={{ zIndex: activeTab === 'open_requests' ? 10 : 1 }}>
     <div className="w-full overflow-x-auto rounded-lg bg-gray-800/10 ring-1 ring-amber-500/30">
       {openRequests.length > 0 ? (
         <div>
@@ -980,7 +980,7 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
   </div>
   
   {/* Mining In Progress Tab */}
-  <div className={activeTab === 'in_progress' ? 'block' : 'hidden'}>
+  <div className={activeTab === 'in_progress' ? 'block' : 'hidden'} style={{ zIndex: activeTab === 'in_progress' ? 10 : 1 }}>
     <div className="w-full overflow-x-auto rounded-lg bg-gray-800/10 ring-1 ring-blue-500/30">
       {miningInProgress.length > 0 ? (
         <div>
@@ -1050,7 +1050,7 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
   </div>
   
   {/* Mining Complete Tab */}
-  <div className={activeTab === 'mining_complete' ? 'block' : 'hidden'}>
+  <div className={activeTab === 'mining_complete' ? 'block' : 'hidden'} style={{ zIndex: activeTab === 'mining_complete' ? 10 : 1 }}>
     <div className="w-full overflow-x-auto rounded-lg bg-gray-800/10 ring-1 ring-green-500/30">
       {miningComplete.length > 0 ? (
         <div>
