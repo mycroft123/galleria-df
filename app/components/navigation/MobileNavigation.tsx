@@ -38,6 +38,10 @@ const MobileNavigation = ({
     setIsClient(true);
   }, []);
 
+  // Filter out "Analysis" and "Tokens", and replace "NFTs" with "Mining"
+  const filteredNavigation = navigation.filter(item => item.name !== "Analysis" && item.name !== "Tokens")
+      .map(item => item.name === "Nfts" ? {...item, name: "Mining"} : item);
+
   if (!isClient) {
     return null;
   }
@@ -102,7 +106,7 @@ const MobileNavigation = ({
                 </div>
                 <nav className="flex flex-1 flex-col">
                   <ul role="list" className="-mx-2 flex-1 space-y-2">
-                    {navigation.map((item) => (
+                    {filteredNavigation.map((item) => (
                       <button
                         key={item.name}
                         onClick={() => {
@@ -125,7 +129,9 @@ const MobileNavigation = ({
                           )}
                           aria-hidden="true"
                         />
-                        {item.name}
+                        {item.href === "url" ? "URL" : 
+                         item.name === "Mining" ? "Mining" : 
+                         item.href.charAt(0).toUpperCase() + item.href.slice(1)}
                       </button>
                     ))}
                   </ul>
