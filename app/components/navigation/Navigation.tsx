@@ -31,18 +31,21 @@ const NavigationContent = ({
     const { isConnected, publicKey, tokenBalance, isLoading } = useWallet();
     
     // Debug logging
-    console.log("Wallet Status:", { isConnected, publicKey, isLoading });
+    console.log("Wallet Status:", { isConnected, publicKey, tokenBalance, isLoading });
     
-    // Force chat view if not authenticated
+    // Check if user has a valid balance (not null, undefined, or 0)
+    const hasValidBalance = tokenBalance !== null && tokenBalance !== undefined && tokenBalance > 0;
+    
+    // Force chat view if not authenticated or no balance
     useEffect(() => {
       console.log("Effect checking view:", currentView);
-      console.log("Auth status:", { isConnected, publicKey, isLoading });
+      console.log("Auth status:", { isConnected, publicKey, tokenBalance, hasValidBalance, isLoading });
       
-      if (!isLoading && currentView !== 'chat' && (!isConnected || !publicKey)) {
-        console.log("Redirecting to chat view due to authentication check");
+      if (!isLoading && currentView !== 'chat' && (!isConnected || !publicKey || !hasValidBalance)) {
+        console.log("Redirecting to chat view due to authentication/balance check");
         router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
       }
-    }, [currentView, isConnected, publicKey, isLoading, router]);
+    }, [currentView, isConnected, publicKey, tokenBalance, hasValidBalance, isLoading, router]);
     
     // Explicitly create navigation arrays
     const chatOnlyNav = [
@@ -93,13 +96,12 @@ const NavigationContent = ({
       }
     ];
     
-    // Determine which navigation to use
-    // Important: Make this very explicit
-    const navItems = (!isLoading && isConnected && publicKey) ? fullNav : chatOnlyNav;
+    // Determine which navigation to use - now checks balance as well
+    const navItems = (!isLoading && isConnected && publicKey && hasValidBalance) ? fullNav : chatOnlyNav;
     
     console.log("Navigation items:", 
       navItems.map(item => item.name),
-      "Auth status:", { isConnected, publicKey, isLoading }
+      "Auth status:", { isConnected, publicKey, tokenBalance, hasValidBalance, isLoading }
     );
 
     return (

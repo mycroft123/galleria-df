@@ -14,6 +14,7 @@ interface MobileNavigationProps {
         name: string;
         href: string;
         icon: any;
+        onClick?: () => void;  // Make sure onClick is in the type
     }[];
     searchParams: {
         view?: string;
@@ -40,6 +41,9 @@ const MobileNavigation = ({
   if (!isClient) {
     return null;
   }
+  
+  // Debug logging to verify navigation items
+  console.log("MobileNavigation - items:", navigation.map(item => item.name));
 
   return (
     <Transition.Root show={sidebarOpen} as={Fragment}>
@@ -105,7 +109,13 @@ const MobileNavigation = ({
                       <button
                         key={item.name}
                         onClick={() => {
-                          changeView(item.href, params.walletAddress);
+                          // Use the provided onClick handler if available
+                          if (item.onClick) {
+                            item.onClick();
+                          } else {
+                            // Fallback to default behavior
+                            changeView(item.href, params.walletAddress);
+                          }
                           setSidebarOpen(false);
                         }}
                         className={classNames(
