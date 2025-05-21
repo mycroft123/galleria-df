@@ -28,6 +28,7 @@ const SidebarNavigation = ({
     // Filter out "Analysis" and "Tokens", and replace "NFTs" with "Mining"
     const filteredNavigation = navigation.filter(item => item.name !== "Analysis" && item.name !== "Tokens")
         .map(item => item.name === "Nfts" ? {...item, name: "Mining"} : item);
+        
     
     return (
         <div className="hidden bg-black bg-opacity-40 backdrop-blur-sm lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:block lg:w-20 lg:overflow-y-auto lg:pb-4">
