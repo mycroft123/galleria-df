@@ -8,7 +8,7 @@ import MobileNavigation from "./MobileNavigation";
 import SidebarNavigation from "./SidebarNavigation";
 import { usePersistentView } from "../../hooks/usePersistentView";
 import { WalletProvider, useWallet } from '@/app/providers/WalletProvider';
-import { MessageSquare, Bot, CircuitBoard, ScatterChart } from "lucide-react";
+import { MessageSquare, ScatterChart } from "lucide-react";
 
 interface NavigationProps {
   searchParams: {
@@ -20,6 +20,25 @@ interface NavigationProps {
   };
 }
 
+// Chat-only navigation - this is the default
+const CHAT_ONLY_NAV = [
+  { 
+    name: "Chat", 
+    href: "chat", 
+    icon: MessageSquare
+  }
+];
+
+// Full navigation - only shown when we confirm there's a balance
+const FULL_NAV = [
+  { name: "Chat", href: "chat", icon: MessageSquare },
+  { name: "Analysis", href: "analysis", icon: ScatterChart },
+  { name: "NFTs", href: "nfts", icon: PhotoIcon },
+  { name: "Portfolio", href: "portfolio", icon: ChartBarIcon },
+  { name: "Tokens", href: "tokens", icon: StopCircleIcon },
+  { name: "URL Input", href: "url", icon: LinkIcon }
+];
+
 // This is the inner component that uses the wallet hook
 const NavigationContent = ({
     params,
@@ -28,81 +47,55 @@ const NavigationContent = ({
     const router = useRouter();
     const [sidebarOpen, setSidebarOpen] = useState(false);
     const { currentView, changeView } = usePersistentView('tokens');
-    const { isConnected, publicKey, tokenBalance, isLoading } = useWallet();
+    const { tokenBalance } = useWallet();
     
-    // Debug logging
-    console.log("Wallet Status:", { isConnected, publicKey, tokenBalance, isLoading });
+    // IMPORTANT: Start with limited navigation by default
+    const [confirmedHasTokens, setConfirmedHasTokens] = useState(false);
     
-    // Check if user has a valid balance (not null, undefined, or 0)
-    const hasValidBalance = tokenBalance !== null && tokenBalance !== undefined && tokenBalance > 0;
-    
-    // Force chat view if not authenticated or no balance
+    // Check and update token balance status
     useEffect(() => {
-      console.log("Effect checking view:", currentView);
-      console.log("Auth status:", { isConnected, publicKey, tokenBalance, hasValidBalance, isLoading });
+      console.log("Token balance updated:", tokenBalance);
       
-      if (!isLoading && currentView !== 'chat' && (!isConnected || !publicKey || !hasValidBalance)) {
-        console.log("Redirecting to chat view due to authentication/balance check");
-        router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
+      // Only set to true if we positively confirm there are tokens
+      if (tokenBalance && tokenBalance > 0) {
+        console.log("✅ CONFIRMED: User has tokens, enabling full navigation");
+        setConfirmedHasTokens(true);
+      } else {
+        console.log("❌ NO TOKENS CONFIRMED: Limited to chat only");
+        setConfirmedHasTokens(false);
+        
+        // If not on chat view, redirect to chat
+        if (currentView !== 'chat') {
+          console.log("Redirecting to chat view");
+          router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
+        }
       }
-    }, [currentView, isConnected, publicKey, tokenBalance, hasValidBalance, isLoading, router]);
+    }, [tokenBalance, currentView, router]);
     
-    // Explicitly create navigation arrays
-    const chatOnlyNav = [
-      { 
-        name: "Chat", 
-        href: "chat", 
-        icon: MessageSquare,
-        onClick: () => changeView("chat", params.walletAddress)
+    // CRITICAL: Start with chat-only navigation, then expand only when confirmed
+    const navItems = confirmedHasTokens ? FULL_NAV : CHAT_ONLY_NAV;
+    
+    // Add onClick handlers to navigation items
+    const navigationWithHandlers = navItems.map(item => ({
+      ...item,
+      onClick: () => {
+        // If trying to navigate away from chat without confirmed tokens
+        if (item.href !== 'chat' && !confirmedHasTokens) {
+          console.log("Attempt to navigate to restricted area, redirecting to chat");
+          router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
+        } else {
+          // Normal navigation
+          changeView(item.href, params.walletAddress);
+        }
       }
-    ];
+    }));
     
-    const fullNav = [
-      { 
-        name: "Chat", 
-        href: "chat", 
-        icon: MessageSquare,
-        onClick: () => changeView("chat", params.walletAddress)
-      },
-      { 
-        name: "Analysis", 
-        href: "analysis", 
-        icon: ScatterChart,
-        onClick: () => changeView("analysis", params.walletAddress)
-      },
-      { 
-        name: "NFTs", 
-        href: "nfts", 
-        icon: PhotoIcon,
-        onClick: () => changeView("nfts", params.walletAddress)
-      },
-      { 
-        name: "Portfolio", 
-        href: "portfolio", 
-        icon: ChartBarIcon,
-        onClick: () => changeView("portfolio", params.walletAddress)
-      },
-      { 
-        name: "Tokens", 
-        href: "tokens", 
-        icon: StopCircleIcon,
-        onClick: () => changeView("tokens", params.walletAddress)
-      },
-      { 
-        name: "URL Input", 
-        href: "url", 
-        icon: LinkIcon,
-        onClick: () => changeView("url", params.walletAddress)
-      }
-    ];
-    
-    // Determine which navigation to use - now checks balance as well
-    const navItems = (!isLoading && isConnected && publicKey && hasValidBalance) ? fullNav : chatOnlyNav;
-    
-    console.log("Navigation items:", 
-      navItems.map(item => item.name),
-      "Auth status:", { isConnected, publicKey, tokenBalance, hasValidBalance, isLoading }
-    );
+    console.log("Navigation status:", {
+      confirmedHasTokens,
+      tokenBalance,
+      navItems: navigationWithHandlers.map(item => item.name),
+      currentView
+    });
 
     return (
       <>
@@ -110,14 +103,14 @@ const NavigationContent = ({
         <MobileNavigation
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
-          navigation={navItems}
+          navigation={navigationWithHandlers}
           searchParams={{ view: currentView }}
           params={params}
         />
 
         {/* Sidebar navigation */}
         <SidebarNavigation
-          navigation={navItems}
+          navigation={navigationWithHandlers}
           searchParams={{ view: currentView }}
           params={params}
         />
