@@ -103,12 +103,12 @@ const NavigationContent = ({
     // Get all wallet state
     const { isConnected, publicKey } = useWallet();
     
-    // Debug component state
+    // Debug component state - INITIALIZE with consistent values
     const [debugInfo, setDebugInfo] = useState({
       showFullNav: false,
       hasWalletBalance: false,
       foundBalance: "",
-      navigationItems: [] as string[],
+      navigationItems: CHAT_ONLY_NAV.map(item => item.name),
       checkCount: 0
     });
     
@@ -131,11 +131,24 @@ const NavigationContent = ({
           console.log("Balance check update:", { hasBalance, balance, checkCount: checkCountRef.current });
           setHasDeFacts(hasBalance);
           setDetectedBalance(balance);
-        }
-        
-        // Update debug count periodically
-        if (checkCountRef.current % 5 === 0) {
-          setDebugInfo(prev => ({ ...prev, checkCount: checkCountRef.current }));
+          
+          // IMPORTANT: Update debug info immediately when balance changes
+          // This ensures debug display and actual state stay in sync
+          const accessAllowed = hasBalance && isConnected && publicKey;
+          setDebugInfo(prev => ({
+            ...prev,
+            showFullNav: accessAllowed,
+            hasWalletBalance: hasBalance,
+            foundBalance: balance,
+            navigationItems: accessAllowed ? FULL_NAV.map(item => item.name) : CHAT_ONLY_NAV.map(item => item.name),
+            checkCount: checkCountRef.current
+          }));
+        } else if (checkCountRef.current % 5 === 0) {
+          // Just update the check count for periodic updates
+          setDebugInfo(prev => ({ 
+            ...prev, 
+            checkCount: checkCountRef.current 
+          }));
         }
       };
       
@@ -163,7 +176,7 @@ const NavigationContent = ({
         clearInterval(checkInterval);
         observer.disconnect();
       };
-    }, [hasDeFacts, detectedBalance]);
+    }, [hasDeFacts, detectedBalance, isConnected, publicKey]);
     
     // Update navigation items based on DeFacts balance
     useEffect(() => {
@@ -181,35 +194,17 @@ const NavigationContent = ({
       
       const accessAllowed = hasDeFacts && isConnected && publicKey;
       
-      if (accessAllowed) {
-        console.log("✅ SHOWING FULL NAVIGATION - Has DeFacts balance");
-        setDebugInfo(prev => ({
-          ...prev,
-          showFullNav: true,
-          hasWalletBalance: true,
-          foundBalance: detectedBalance,
-          navigationItems: FULL_NAV.map(item => item.name)
-        }));
-      } else {
-        console.log("❌ SHOWING LIMITED NAVIGATION - No DeFacts balance");
-        setDebugInfo(prev => ({
-          ...prev,
-          showFullNav: false,
-          hasWalletBalance: false,
-          foundBalance: detectedBalance,
-          navigationItems: CHAT_ONLY_NAV.map(item => item.name)
-        }));
-        
-        // If current view is not chat, redirect to chat
-        if (currentView !== 'chat') {
-          console.log("Redirecting to chat view - no DeFacts balance");
-          router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
-        }
+      // If current view is not chat and access is not allowed, redirect to chat
+      if (!accessAllowed && currentView !== 'chat') {
+        console.log("Redirecting to chat view - no DeFacts balance");
+        router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
       }
+      
     }, [hasDeFacts, detectedBalance, isConnected, publicKey, currentView, router]);
     
     // Choose navigation based on DeFacts balance
-    const navItems = (hasDeFacts && isConnected && publicKey) ? FULL_NAV : CHAT_ONLY_NAV;
+    const accessAllowed = hasDeFacts && isConnected && publicKey;
+    const navItems = accessAllowed ? FULL_NAV : CHAT_ONLY_NAV;
     
     // Add onClick handlers to navigation items
     const navigationWithHandlers = navItems.map(item => ({
