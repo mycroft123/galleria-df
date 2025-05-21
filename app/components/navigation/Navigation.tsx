@@ -20,21 +20,6 @@ interface NavigationProps {
   };
 }
 
-// Original navigation items
-const fullNavigation = [
-  { name: "Chat", href: "chat", icon: MessageSquare },
-  { name: "Analysis", href: "analysis", icon: ScatterChart },
-  { name: "NFTs", href: "nfts", icon: PhotoIcon },
-  { name: "Portfolio", href: "portfolio", icon: ChartBarIcon },
-  { name: "Tokens", href: "tokens", icon: StopCircleIcon },
-  { name: "URL Input", href: "url", icon: LinkIcon },
-];
-
-// Just the chat tab for unauthenticated users
-const limitedNavigation = [
-  { name: "Chat", href: "chat", icon: MessageSquare }
-];
-
 // This is the inner component that uses the wallet hook
 const NavigationContent = ({
     params,
@@ -45,26 +30,77 @@ const NavigationContent = ({
     const { currentView, changeView } = usePersistentView('tokens');
     const { isConnected, publicKey, tokenBalance, isLoading } = useWallet();
     
+    // Debug logging
+    console.log("Wallet Status:", { isConnected, publicKey, isLoading });
+    
     // Force chat view if not authenticated
     useEffect(() => {
+      console.log("Effect checking view:", currentView);
+      console.log("Auth status:", { isConnected, publicKey, isLoading });
+      
       if (!isLoading && currentView !== 'chat' && (!isConnected || !publicKey)) {
+        console.log("Redirecting to chat view due to authentication check");
         router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
       }
     }, [currentView, isConnected, publicKey, isLoading, router]);
     
-    // Determine which navigation items to show based on authentication
-    const visibleNavigation = (!isLoading && isConnected && publicKey) 
-      ? fullNavigation 
-      : limitedNavigation;
-
-    // Add click handlers to navigation items
-    const navigationWithHandler = visibleNavigation.map(item => ({
-      ...item,
-      onClick: () => {
-        // For authenticated users or chat tab, use normal navigation
-        changeView(item.href, params.walletAddress);
+    // Explicitly create navigation arrays
+    const chatOnlyNav = [
+      { 
+        name: "Chat", 
+        href: "chat", 
+        icon: MessageSquare,
+        onClick: () => changeView("chat", params.walletAddress)
       }
-    }));
+    ];
+    
+    const fullNav = [
+      { 
+        name: "Chat", 
+        href: "chat", 
+        icon: MessageSquare,
+        onClick: () => changeView("chat", params.walletAddress)
+      },
+      { 
+        name: "Analysis", 
+        href: "analysis", 
+        icon: ScatterChart,
+        onClick: () => changeView("analysis", params.walletAddress)
+      },
+      { 
+        name: "NFTs", 
+        href: "nfts", 
+        icon: PhotoIcon,
+        onClick: () => changeView("nfts", params.walletAddress)
+      },
+      { 
+        name: "Portfolio", 
+        href: "portfolio", 
+        icon: ChartBarIcon,
+        onClick: () => changeView("portfolio", params.walletAddress)
+      },
+      { 
+        name: "Tokens", 
+        href: "tokens", 
+        icon: StopCircleIcon,
+        onClick: () => changeView("tokens", params.walletAddress)
+      },
+      { 
+        name: "URL Input", 
+        href: "url", 
+        icon: LinkIcon,
+        onClick: () => changeView("url", params.walletAddress)
+      }
+    ];
+    
+    // Determine which navigation to use
+    // Important: Make this very explicit
+    const navItems = (!isLoading && isConnected && publicKey) ? fullNav : chatOnlyNav;
+    
+    console.log("Navigation items:", 
+      navItems.map(item => item.name),
+      "Auth status:", { isConnected, publicKey, isLoading }
+    );
 
     return (
       <>
@@ -72,14 +108,14 @@ const NavigationContent = ({
         <MobileNavigation
           sidebarOpen={sidebarOpen}
           setSidebarOpen={setSidebarOpen}
-          navigation={navigationWithHandler}
+          navigation={navItems}
           searchParams={{ view: currentView }}
           params={params}
         />
 
         {/* Sidebar navigation */}
         <SidebarNavigation
-          navigation={navigationWithHandler}
+          navigation={navItems}
           searchParams={{ view: currentView }}
           params={params}
         />

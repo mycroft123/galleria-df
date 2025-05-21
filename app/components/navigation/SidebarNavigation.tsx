@@ -2,15 +2,14 @@
 
 import { Logo } from "@/app/components";
 import { classNames } from "@/app/utils";
-import { PhotoIcon, StopCircleIcon, LinkIcon, ChartBarIcon } from "@heroicons/react/24/outline";
 import { usePersistentView } from "@/app/hooks/usePersistentView";
-import { MessageSquare, ScatterChart } from "lucide-react";
 
 interface SidebarNavigationProps {
     navigation: {
         name: string;
         href: string;
         icon: any;
+        onClick?: () => void;
     }[];
     searchParams: {
         view?: string;
@@ -20,16 +19,8 @@ interface SidebarNavigationProps {
     };
 }
 
-const defaultNavigation = [
-    { name: "Chat", href: "chat", icon: MessageSquare },
-    { name: "Analysis", href: "analysis", icon: ScatterChart },
-    { name: "NFTs", href: "nfts", icon: PhotoIcon },
-    { name: "Portfolio", href: "portfolio", icon: ChartBarIcon },
-    { name: "URL Input", href: "url", icon: LinkIcon },
-];
-
 const SidebarNavigation = ({
-    navigation = defaultNavigation,
+    navigation,
     params,
 }: SidebarNavigationProps) => {
     const { currentView, changeView, isInitialized } = usePersistentView();
@@ -37,6 +28,9 @@ const SidebarNavigation = ({
     if (!isInitialized) {
       return null; // or a loading state
     }
+
+    // Important: Log navigation items to debug
+    console.log("SidebarNavigation - items:", navigation);
 
     return (
         <div className="hidden bg-black bg-opacity-40 backdrop-blur-sm lg:fixed lg:inset-y-0 lg:left-0 lg:z-50 lg:block lg:w-20 lg:overflow-y-auto lg:pb-4">
@@ -48,7 +42,7 @@ const SidebarNavigation = ({
                     {navigation.map((item) => (
                         <li key={item.name} className="w-full px-2">
                             <button
-                                onClick={() => changeView(item.href, params.walletAddress)}
+                                onClick={item.onClick || (() => changeView(item.href, params.walletAddress))}
                                 className={classNames(
                                     currentView === item.href
                                         ? "bg-indigo-100/5 text-white ring-1 ring-inset ring-white/30 transition duration-200 ease-in-out"
