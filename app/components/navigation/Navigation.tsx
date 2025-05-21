@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from 'next/navigation';
 import { PhotoIcon, StopCircleIcon, LinkIcon, ChartBarIcon } from "@heroicons/react/24/outline";
 import HeaderNavigation from "./HeaderNavigation";
@@ -39,6 +39,58 @@ const FULL_NAV = [
   { name: "URL Input", href: "url", icon: LinkIcon }
 ];
 
+// Function to check the entire DOM for any balance indicators
+const checkForDefactsBalance = () => {
+  try {
+    // Check all div elements in the DOM
+    const allElements = document.querySelectorAll('div');
+    let foundEmptyDeFacts = false;
+    let foundBalance = "";
+    let htmlContent = "";
+    
+    // Regular expressions for different balance formats
+    const emptyRegex = /--\s*DeFacts/i;
+    const balanceRegex = /(\d[\d,.]+)\s*DeFacts/i;
+    
+    // Look for balance indicators in each element
+    for (let i = 0; i < allElements.length; i++) {
+      const el = allElements[i];
+      if (el.textContent) {
+        htmlContent = el.textContent.trim();
+        
+        // Check for empty balance indicator
+        if (emptyRegex.test(htmlContent)) {
+          foundEmptyDeFacts = true;
+          console.log("Found empty DeFacts:", htmlContent);
+        }
+        
+        // Check for numeric balance
+        const match = htmlContent.match(balanceRegex);
+        if (match) {
+          foundBalance = match[1]; // This captures the numeric part
+          console.log("Found DeFacts balance:", foundBalance);
+        }
+      }
+    }
+    
+    // If we explicitly found a balance, that takes precedence
+    if (foundBalance !== "") {
+      return { hasBalance: true, balance: foundBalance };
+    }
+    
+    // If we found an empty indicator and no balance, we know there's no balance
+    if (foundEmptyDeFacts) {
+      return { hasBalance: false, balance: "" };
+    }
+    
+    // If we didn't find either, assume there might be a balance (less restrictive)
+    return { hasBalance: true, balance: "unknown" };
+  } catch (e) {
+    console.error("Error checking DeFacts balance:", e);
+    return { hasBalance: false, balance: "" };
+  }
+};
+
 // This is the inner component that uses the wallet hook
 const NavigationContent = ({
     params,
@@ -56,94 +108,97 @@ const NavigationContent = ({
       showFullNav: false,
       hasWalletBalance: false,
       foundBalance: "",
-      navigationItems: [] as string[]
+      navigationItems: [] as string[],
+      checkCount: 0
     });
     
-    // Track if we have a confirmed DeFacts balance
+    // Track if we have a confirmed DeFacts balance and the detected value
     const [hasDeFacts, setHasDeFacts] = useState(false);
     const [detectedBalance, setDetectedBalance] = useState("");
+    const checkCountRef = useRef(0);
     
-    // Check for DeFacts balance on component mount and when wallet state changes
+    // Set up frequent balance checks and DOM observer
     useEffect(() => {
-      // This should check for a numeric balance followed by "DeFacts"
-      // We'll use a timeout to allow the UI to render
-      const checkTimer = setTimeout(() => {
-        try {
-          // Try to find elements that contain numeric balance + "DeFacts"
-          const elements = document.getElementsByClassName('rounded-full');
-          let foundEmptyDeFacts = false;
-          let foundBalance = "";
-          
-          // Regular expression to match a number followed by "DeFacts"
-          const balanceRegex = /([0-9,.]+)\s*DeFacts/;
-          
-          for (let i = 0; i < elements.length; i++) {
-            const el = elements[i];
-            if (el.textContent) {
-              // Check for "-- DeFacts" first
-              if (el.textContent.includes('-- DeFacts')) {
-                foundEmptyDeFacts = true;
-                break;
-              }
-              
-              // Check for numeric balance + "DeFacts"
-              const match = el.textContent.match(balanceRegex);
-              if (match) {
-                foundBalance = match[1]; // This captures the numeric part
-                break;
-              }
-            }
-          }
-          
-          // If we found a balance or didn't find "-- DeFacts"
-          const hasBalance = (foundBalance !== "" || !foundEmptyDeFacts) && isConnected && publicKey;
-          setHasDeFacts(hasBalance);
-          setDetectedBalance(foundBalance);
-          
-          console.log("DeFacts balance check:", { 
-            foundEmptyDeFacts,
-            foundBalance,
-            hasBalance,
-            isConnected,
-            hasPublicKey: !!publicKey
-          });
-        } catch (e) {
-          console.error("Error checking DeFacts balance:", e);
-        }
-      }, 1000);
+      if (typeof window === 'undefined') return;
       
-      return () => clearTimeout(checkTimer);
-    }, [isConnected, publicKey]);
+      // Function to run the balance check
+      const runBalanceCheck = () => {
+        checkCountRef.current += 1;
+        const { hasBalance, balance } = checkForDefactsBalance();
+        
+        // Only update state if there's a change to avoid re-renders
+        if (hasBalance !== hasDeFacts || balance !== detectedBalance) {
+          console.log("Balance check update:", { hasBalance, balance, checkCount: checkCountRef.current });
+          setHasDeFacts(hasBalance);
+          setDetectedBalance(balance);
+        }
+        
+        // Update debug count periodically
+        if (checkCountRef.current % 5 === 0) {
+          setDebugInfo(prev => ({ ...prev, checkCount: checkCountRef.current }));
+        }
+      };
+      
+      // Run initial check
+      runBalanceCheck();
+      
+      // Set up interval to check frequently
+      const checkInterval = setInterval(runBalanceCheck, 500); // Check every 500ms
+      
+      // Set up mutation observer to detect DOM changes
+      const observer = new MutationObserver(() => {
+        runBalanceCheck();
+      });
+      
+      // Start observing the entire document for changes
+      observer.observe(document.body, { 
+        childList: true, 
+        subtree: true,
+        characterData: true, 
+        attributes: true 
+      });
+      
+      // Clean up
+      return () => {
+        clearInterval(checkInterval);
+        observer.disconnect();
+      };
+    }, [hasDeFacts, detectedBalance]);
     
     // Update navigation items based on DeFacts balance
     useEffect(() => {
       console.log(`
       --------------------------
-      WALLET STATE:
+      WALLET STATE UPDATE:
       --------------------------
       isConnected: ${isConnected}
       publicKey: ${publicKey ? `${publicKey.slice(0, 4)}...${publicKey.slice(-4)}` : 'None'}
       hasDeFacts: ${hasDeFacts}
       detectedBalance: ${detectedBalance}
+      checkCount: ${checkCountRef.current}
       --------------------------
       `);
       
-      if (hasDeFacts) {
+      const accessAllowed = hasDeFacts && isConnected && publicKey;
+      
+      if (accessAllowed) {
         console.log("✅ SHOWING FULL NAVIGATION - Has DeFacts balance");
-        setDebugInfo({
+        setDebugInfo(prev => ({
+          ...prev,
           showFullNav: true,
-          hasWalletBalance: hasDeFacts,
+          hasWalletBalance: true,
           foundBalance: detectedBalance,
           navigationItems: FULL_NAV.map(item => item.name)
-        });
+        }));
       } else {
         console.log("❌ SHOWING LIMITED NAVIGATION - No DeFacts balance");
-        setDebugInfo({
+        setDebugInfo(prev => ({
+          ...prev,
           showFullNav: false,
-          hasWalletBalance: hasDeFacts,
+          hasWalletBalance: false,
           foundBalance: detectedBalance,
           navigationItems: CHAT_ONLY_NAV.map(item => item.name)
-        });
+        }));
         
         // If current view is not chat, redirect to chat
         if (currentView !== 'chat') {
@@ -154,14 +209,14 @@ const NavigationContent = ({
     }, [hasDeFacts, detectedBalance, isConnected, publicKey, currentView, router]);
     
     // Choose navigation based on DeFacts balance
-    const navItems = hasDeFacts ? FULL_NAV : CHAT_ONLY_NAV;
+    const navItems = (hasDeFacts && isConnected && publicKey) ? FULL_NAV : CHAT_ONLY_NAV;
     
     // Add onClick handlers to navigation items
     const navigationWithHandlers = navItems.map(item => ({
       ...item,
       onClick: () => {
         // If trying to navigate away from chat without DeFacts balance
-        if (item.href !== 'chat' && !hasDeFacts) {
+        if (item.href !== 'chat' && (!hasDeFacts || !isConnected || !publicKey)) {
           console.log("Attempt to navigate to restricted area, redirecting to chat");
           router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
         } else {
@@ -191,6 +246,7 @@ const NavigationContent = ({
           <div>Navigation: {debugInfo.showFullNav ? 'FULL' : 'LIMITED'}</div>
           <div>DeFacts Balance: {debugInfo.hasWalletBalance ? 'YES' : 'NO'}</div>
           <div>Detected Balance: {debugInfo.foundBalance || 'none'}</div>
+          <div>Check Count: {debugInfo.checkCount}</div>
           <div>Items: {debugInfo.navigationItems.join(', ')}</div>
           <div>Current View: {currentView}</div>
         </div>
