@@ -40,8 +40,9 @@ const HeaderNavigation = ({ setSidebarOpen }: HeaderNavigationProps) => {
             </button>
           </div>
           
-        {/* Left - DeFacts text (visible only on mobile) */}
-        <div className="absolute left-4 flex items-center lg:hidden">
+
+        {/* Left-center - DeFacts text (visible only on mobile) */}
+        <div className="absolute left-16 flex items-center lg:hidden">
           <span className="text-white font-semibold text-lg">DeFacts</span>
         </div>
           
