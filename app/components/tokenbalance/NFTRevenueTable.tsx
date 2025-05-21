@@ -58,6 +58,7 @@ const NFTRevenueTable: React.FC<NFTRevenueTableProps> = ({ walletAddress, onNFTS
   const [totalDailyRevenue, setTotalDailyRevenue] = useState(0);
 
   // Helper function to generate random but realistic revenue for an NFT
+  // REDUCED by approximately 10x
   const generateRevenueForNFT = (nftId: string, type: 'OFACT' | 'AFACT', childCount: number = 0) => {
     // Create a deterministic but seemingly random base value from the NFT ID
     const hashCode = nftId.split('').reduce((a, b) => {
@@ -66,7 +67,7 @@ const NFTRevenueTable: React.FC<NFTRevenueTableProps> = ({ walletAddress, onNFTS
     }, 0);
     
     // Use the hash to generate a base value
-    const baseFactor = Math.abs(hashCode % 1000) / 200 + 0.5;
+    const baseFactor = Math.abs(hashCode % 1000) / 2000 + 0.05; // Reduced by 10x
     
     // OFACTs earn more than AFACTs
     const typeMultiplier = type === 'OFACT' ? 5 : 1;
@@ -301,6 +302,7 @@ const NFTRevenueTable: React.FC<NFTRevenueTableProps> = ({ walletAddress, onNFTS
     const parentId1 = 'sample-ofact-1';
     const parentId2 = 'sample-ofact-2';
     
+    // SAMPLE DATA REDUCED by approximately 10x
     const sampleRevenues: NFTRevenue[] = [
       {
         id: parentId1,
@@ -308,10 +310,10 @@ const NFTRevenueTable: React.FC<NFTRevenueTableProps> = ({ walletAddress, onNFTS
         type: 'OFACT',
         imageUrl: COLOR_TO_IMAGE_MAP.orange,
         sourceUrl: 'https://example.com/article1',
-        daily: 5.75,
-        weekly: 40.25,
-        monthly: 172.50,
-        allTime: 310.25,
+        daily: 0.58, // Reduced from 5.75
+        weekly: 4.06, // Reduced from 40.25
+        monthly: 17.4, // Reduced from 172.50
+        allTime: 31.3, // Reduced from 310.25
         lastUpdated: new Date().toLocaleString()
       },
       {
@@ -320,10 +322,10 @@ const NFTRevenueTable: React.FC<NFTRevenueTableProps> = ({ walletAddress, onNFTS
         type: 'AFACT',
         imageUrl: COLOR_TO_IMAGE_MAP.yellow,
         description: 'A fact extracted from an article about technology',
-        daily: 1.25,
-        weekly: 8.75,
-        monthly: 37.50,
-        allTime: 67.50,
+        daily: 0.13, // Reduced from 1.25
+        weekly: 0.91, // Reduced from 8.75
+        monthly: 3.9, // Reduced from 37.50
+        allTime: 6.8, // Reduced from 67.50
         lastUpdated: new Date().toLocaleString(),
         parentId: parentId1  // Child of first OFACT
       },
@@ -333,10 +335,10 @@ const NFTRevenueTable: React.FC<NFTRevenueTableProps> = ({ walletAddress, onNFTS
         type: 'AFACT',
         imageUrl: COLOR_TO_IMAGE_MAP.yellow,
         description: 'Another fact from the same article about innovation',
-        daily: 1.50,
-        weekly: 10.50,
-        monthly: 45.00,
-        allTime: 81.00,
+        daily: 0.15, // Reduced from 1.50
+        weekly: 1.05, // Reduced from 10.50
+        monthly: 4.5, // Reduced from 45.00
+        allTime: 8.1, // Reduced from 81.00
         lastUpdated: new Date().toLocaleString(),
         parentId: parentId1  // Child of first OFACT
       },
@@ -346,10 +348,10 @@ const NFTRevenueTable: React.FC<NFTRevenueTableProps> = ({ walletAddress, onNFTS
         type: 'OFACT',
         imageUrl: COLOR_TO_IMAGE_MAP.orange,
         sourceUrl: 'https://example.com/article2',
-        daily: 7.20,
-        weekly: 50.40,
-        monthly: 216.00,
-        allTime: 388.80,
+        daily: 0.72, // Reduced from 7.20
+        weekly: 5.04, // Reduced from 50.40
+        monthly: 21.6, // Reduced from 216.00
+        allTime: 38.9, // Reduced from 388.80
         lastUpdated: new Date().toLocaleString()
       },
       {
@@ -358,10 +360,10 @@ const NFTRevenueTable: React.FC<NFTRevenueTableProps> = ({ walletAddress, onNFTS
         type: 'AFACT',
         imageUrl: COLOR_TO_IMAGE_MAP.yellow,
         description: 'A fact about climate science from article 2',
-        daily: 1.80,
-        weekly: 12.60,
-        monthly: 54.00,
-        allTime: 97.20,
+        daily: 0.18, // Reduced from 1.80
+        weekly: 1.26, // Reduced from 12.60
+        monthly: 5.4, // Reduced from 54.00
+        allTime: 9.7, // Reduced from 97.20
         lastUpdated: new Date().toLocaleString(),
         parentId: parentId2  // Child of second OFACT
       }
