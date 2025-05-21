@@ -11,8 +11,11 @@ type MiningState = 'open_request' | 'mining_in_progress' | 'mining_complete';
 // Define time filter options
 type TimeFilter = 'hour' | 'day' | 'week' | 'all';
 
+// Define tab options
+type TabOption = 'open_requests' | 'in_progress' | 'mining_complete';
+
 // Color to image map for SVG icons
-const COLOR_TO_IMAGE_MAP: { [key: string]: string } = {
+const COLOR_TO_IMAGE_MAP = {
   blue: "https://rim3qi36iu6y55tmt77rm7w3ved7cpdjjrhty2kl3tplkez3drmq.arweave.net/ihm4I35FPY72bJ__Fn7bqQfxPGlMTzxpS9zetRM7HFk",
   yellow: "https://w6hav65sf2mc3do4yxsgex3rfupnngahqfibv7lphwvgisf7cfua.arweave.net/t44K-7IumC2N3MXkYl9xLR7WmAeBUBr9bz2qZEi_EWg",
   orange: "https://z325ctfzpasszfceuep3x4mv33dncyszsb2gcbg67rjljiguchba.arweave.net/zvXRTLl4JSyURKEfu_GV3sbRYlmQdGEE3vxStKDUEcI",
@@ -51,6 +54,8 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
   const [isRefreshing, setIsRefreshing] = useState(false);
   // Add time filter state
   const [timeFilter, setTimeFilter] = useState<TimeFilter>('week');
+  // Add active tab state
+  const [activeTab, setActiveTab] = useState<TabOption>('open_requests');
   
   // Mining state management
   const [miningState, setMiningState] = useState<{ [key: string]: MiningState }>({});
@@ -163,8 +168,7 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
       // Process all AFACTs to find their parent OFACTs
       afactNFTs.forEach((afact: NonFungibleToken) => {
         try {
-          // Look for parent reference in metadata - this will depend on your specific data structure
-          // This is a common approach, but you may need to adjust based on your schema
+          // Look for parent reference in metadata
           const parentId = afact.content?.metadata?.properties?.parentOfactId ||
                            afact.content?.metadata?.attributes?.find(attr => 
                              attr.trait_type === 'Parent' || 
@@ -370,6 +374,8 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
         if (result.success && result.jobId) {
           // Start polling for job status
           startJobStatusPolling(result.jobId, nftId);
+          // Switch to the "In Progress" tab
+          setActiveTab('in_progress');
         } else {
           throw new Error('Missing jobId in API response');
         }
@@ -396,6 +402,8 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
                   if (result.success && result.jobId) {
                     // Start polling for job status
                     startJobStatusPolling(result.jobId, nftId);
+                    // Switch to the "In Progress" tab
+                    setActiveTab('in_progress');
                     resolve(result);
                   } else {
                     reject(new Error('Missing jobId in API response'));
@@ -532,6 +540,8 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
             }
             
             clearInterval(interval);
+            // Switch to the "Mining Complete" tab when done
+            setActiveTab('mining_complete');
           } else if (jobStatus.status === 'failed') {
             // Handle failure
             setMiningState(prev => ({ ...prev, [nftId]: 'open_request' })); // Revert to open state on error
@@ -540,6 +550,8 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
               [nftId]: jobStatus.error || 'Mining failed' 
             }));
             clearInterval(interval);
+            // Switch back to "Open Requests" tab on failure
+            setActiveTab('open_requests');
           }
         } catch (fetchError) {
           console.error('Error fetching job status:', fetchError);
@@ -615,6 +627,8 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
               }
               
               clearInterval(interval);
+              // Switch to the "Mining Complete" tab when done
+              setActiveTab('mining_complete');
             } else if (jobStatus.status === 'failed') {
               setMiningState(prev => ({ ...prev, [nftId]: 'open_request' }));
               setMiningErrors(prev => ({ 
@@ -622,6 +636,8 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
                 [nftId]: jobStatus.error || 'Mining failed' 
               }));
               clearInterval(interval);
+              // Switch back to "Open Requests" tab on failure
+              setActiveTab('open_requests');
             }
             
           } catch (xhrError) {
@@ -645,6 +661,8 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
                 [nftId]: 'Lost connection to mining service after multiple attempts'
               }));
               clearInterval(interval);
+              // Switch back to "Open Requests" tab after failures
+              setActiveTab('open_requests');
             }
           }
         }
@@ -756,6 +774,17 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
     return nft.content?.metadata?.description || '';
   };
 
+  // Function to get the counts for tab badges
+  const getTabCounts = () => {
+    return {
+      open_requests: openRequests.length,
+      in_progress: miningInProgress.length,
+      mining_complete: miningComplete.length
+    };
+  };
+
+  const tabCounts = getTabCounts();
+
   if (loading) {
     return (
       <div className="w-full p-8 flex justify-center items-center">
@@ -826,25 +855,71 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
         </div>
       </div>
       
-      {/* Side-by-side sections container */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Section 1: Open Fact Requests */}
-        <div className="w-full h-full flex flex-col">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-4 h-4 rounded-full bg-amber-500"></div>
-            <h2 className="text-lg font-semibold">Open Requests</h2>
-            <span className="text-sm text-gray-400 ml-2">({openRequests.length})</span>
-          </div>
-          
-          <div className="w-full overflow-x-auto rounded-lg bg-gray-800/10 ring-1 ring-amber-500/30 flex-1 flex flex-col">
+      {/* Tabs Navigation */}
+      <div className="border-b border-white/10">
+        <nav className="flex space-x-6" aria-label="Tabs">
+          <button
+            onClick={() => setActiveTab('open_requests')}
+            className={`${
+              activeTab === 'open_requests'
+                ? 'text-white border-amber-500'
+                : 'text-gray-400 border-transparent hover:text-gray-300 hover:border-gray-600'
+            } py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+            aria-current={activeTab === 'open_requests' ? 'page' : undefined}
+          >
+            <div className="w-3 h-3 rounded-full bg-amber-500"></div>
+            Open Requests
+            <span className="inline-flex items-center justify-center ml-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-800">
+              {tabCounts.open_requests}
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('in_progress')}
+            className={`${
+              activeTab === 'in_progress'
+                ? 'text-white border-blue-500'
+                : 'text-gray-400 border-transparent hover:text-gray-300 hover:border-gray-600'
+            } py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+            aria-current={activeTab === 'in_progress' ? 'page' : undefined}
+          >
+            <div className="w-3 h-3 rounded-full bg-blue-500"></div>
+            In Progress
+            <span className="inline-flex items-center justify-center ml-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-800">
+              {tabCounts.in_progress}
+            </span>
+          </button>
+          <button
+            onClick={() => setActiveTab('mining_complete')}
+            className={`${
+              activeTab === 'mining_complete'
+                ? 'text-white border-green-500'
+                : 'text-gray-400 border-transparent hover:text-gray-300 hover:border-gray-600'
+            } py-3 px-1 border-b-2 font-medium text-sm flex items-center gap-2`}
+            aria-current={activeTab === 'mining_complete' ? 'page' : undefined}
+          >
+            <div className="w-3 h-3 rounded-full bg-green-500"></div>
+            Mined Facts
+            <span className="inline-flex items-center justify-center ml-1 px-2 py-0.5 rounded-full text-xs font-medium bg-gray-800">
+              {tabCounts.mining_complete}
+            </span>
+          </button>
+        </nav>
+      </div>
+      
+      {/* Tab Content */}
+      <div className="tab-content mt-4">
+        {/* Open Requests Tab */}
+        {activeTab === 'open_requests' && (
+          <div className="w-full overflow-x-auto rounded-lg bg-gray-800/10 ring-1 ring-amber-500/30">
             {openRequests.length > 0 ? (
-              <div className="flex-1 overflow-auto">
+              <div>
                 <table className="w-full">
-                  <thead className="sticky top-0 z-10">
+                  <thead>
                     <tr className="border-b border-white/10 bg-amber-900/20">
-                      <th className="p-2 text-left">Type</th>
-                      <th className="p-2 text-left">URL</th>
-                      <th className="p-2 text-left">Action</th>
+                      <th className="p-3 text-left">Type</th>
+                      <th className="p-3 text-left">URL</th>
+                      <th className="p-3 text-left">Created</th>
+                      <th className="p-3 text-left">Action</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -854,8 +929,8 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
                         className="border-b border-white/10 hover:bg-gray-800/30 transition-colors cursor-pointer"
                         onClick={() => setDetailPopup({ type: 'nft', nft })}
                       >
-                                                    <td className="p-2">
-                                                <div className="w-6 h-6 flex-shrink-0">
+                        <td className="p-3">
+                          <div className="w-6 h-6 flex-shrink-0">
                             <img 
                               src={COLOR_TO_IMAGE_MAP.red}
                               alt="OFact"
@@ -863,10 +938,10 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
                             />
                           </div>
                         </td>
-                        <td className="p-2 text-sm">
+                        <td className="p-3 text-sm">
                           <div className="flex items-center gap-1">
                             <ExternalLink className="h-3 w-3 text-gray-400" />
-                            <div className="text-xs text-gray-300 truncate max-w-[120px]">
+                            <div className="text-gray-300 truncate max-w-md">
                               {getSourceUrl(nft)}
                             </div>
                           </div>
@@ -876,13 +951,16 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
                             </div>
                           )}
                         </td>
-                        <td className="p-2">
+                        <td className="p-3 text-sm text-gray-300">
+                          {formatDate(nft)}
+                        </td>
+                        <td className="p-3">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               handleMining(nft.id);
                             }}
-                            className="inline-flex items-center gap-1 rounded-lg bg-emerald-100/5 px-2 py-1 text-xs font-semibold text-white ring-1 ring-inset ring-white/10 transition-all hover:bg-emerald-100/10"
+                            className="inline-flex items-center gap-1 rounded-lg bg-emerald-100/5 px-3 py-2 text-sm font-semibold text-white ring-1 ring-inset ring-white/10 transition-all hover:bg-emerald-100/10"
                           >
                             Mine Fact
                           </button>
@@ -893,30 +971,25 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
                 </table>
               </div>
             ) : (
-              <div className="p-4 text-center text-gray-400 flex-1 flex items-center justify-center">
+              <div className="p-8 text-center text-gray-400">
                 No open fact requests
               </div>
             )}
           </div>
-        </div>
+        )}
         
-        {/* Section 2: Mining In Progress */}
-        <div className="w-full h-full flex flex-col">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-4 h-4 rounded-full bg-blue-500"></div>
-            <h2 className="text-lg font-semibold">In Progress</h2>
-            <span className="text-sm text-gray-400 ml-2">({miningInProgress.length})</span>
-          </div>
-          
-          <div className="w-full overflow-x-auto rounded-lg bg-gray-800/10 ring-1 ring-blue-500/30 flex-1 flex flex-col">
+        {/* Mining In Progress Tab */}
+        {activeTab === 'in_progress' && (
+          <div className="w-full overflow-x-auto rounded-lg bg-gray-800/10 ring-1 ring-blue-500/30">
             {miningInProgress.length > 0 ? (
-              <div className="flex-1 overflow-auto">
+              <div>
                 <table className="w-full">
-                  <thead className="sticky top-0 z-10">
+                  <thead>
                     <tr className="border-b border-white/10 bg-blue-900/20">
-                      <th className="p-2 text-left">Type</th>
-                      <th className="p-2 text-left">URL</th>
-                      <th className="p-2 text-left">Progress</th>
+                      <th className="p-3 text-left">Type</th>
+                      <th className="p-3 text-left">URL</th>
+                      <th className="p-3 text-left">Miner</th>
+                      <th className="p-3 text-left">Progress</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -926,38 +999,40 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
                         className="border-b border-white/10 hover:bg-gray-800/30 transition-colors cursor-pointer"
                         onClick={() => setDetailPopup({ type: 'nft', nft })}
                       >
-                       <td className="p-2">
-                      <div className="w-6 h-6 flex-shrink-0">
-                        <img 
-                          src={miningState[nft.id] === 'mining_complete' ? COLOR_TO_IMAGE_MAP.orange : COLOR_TO_IMAGE_MAP.red}
-                          alt="OFACT"
-                          className="w-full h-full"
-                        />
-                      </div>
-                    </td>
-                        <td className="p-2 text-sm">
+                        <td className="p-3">
+                          <div className="w-6 h-6 flex-shrink-0">
+                            <img 
+                              src={COLOR_TO_IMAGE_MAP.blue}
+                              alt="OFACT"
+                              className="w-full h-full"
+                            />
+                          </div>
+                        </td>
+                        <td className="p-3 text-sm">
                           <div className="flex items-center gap-1">
                             <ExternalLink className="h-3 w-3 text-gray-400" />
-                            <div className="text-xs text-gray-300 truncate max-w-[120px]">
+                            <div className="text-gray-300 truncate max-w-md">
                               {getSourceUrl(nft)}
                             </div>
                           </div>
                         </td>
-                        <td className="p-2">
+                        <td className="p-3 text-sm text-gray-300">
+                          {minerNames[nft.id] || 'Unknown'}
+                        </td>
+                        <td className="p-3">
                           <div className="flex flex-col gap-1">
-                            <div className="inline-flex items-center gap-1 text-blue-400 text-xs">
+                            <div className="inline-flex items-center gap-1 text-blue-400 text-sm">
                               <Loader2 className="h-3 w-3 animate-spin" />
                               <span className="font-medium">
                                 {progressPercent[nft.id]}%
                               </span>
                             </div>
-                            <div className="w-full bg-gray-700 rounded-full h-1.5">
+                            <div className="w-full bg-gray-700 rounded-full h-2">
                               <div 
-                                className="bg-blue-500 h-1.5 rounded-full transition-all duration-200" 
+                                className="bg-blue-500 h-2 rounded-full transition-all duration-200" 
                                 style={{ width: `${progressPercent[nft.id]}%` }}
                               />
                             </div>
-                            <span className="text-[10px] text-gray-400">Miner: {minerNames[nft.id]}</span>
                           </div>
                         </td>
                       </tr>
@@ -966,30 +1041,26 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
                 </table>
               </div>
             ) : (
-              <div className="p-4 text-center text-gray-400 flex-1 flex items-center justify-center">
+              <div className="p-8 text-center text-gray-400">
                 No facts being mined
               </div>
             )}
           </div>
-        </div>
+        )}
         
-        {/* Section 3: Mining Complete with Extracted AFacts */}
-        <div className="w-full h-full flex flex-col">
-          <div className="flex items-center gap-2 mb-2">
-            <div className="w-4 h-4 rounded-full bg-green-500"></div>
-            <h2 className="text-lg font-semibold">Mined Facts</h2>
-            <span className="text-sm text-gray-400 ml-2">({miningComplete.length})</span>
-          </div>
-          
-          <div className="w-full overflow-x-auto rounded-lg bg-gray-800/10 ring-1 ring-green-500/30 flex-1 flex flex-col">
+        {/* Mining Complete Tab */}
+        {activeTab === 'mining_complete' && (
+          <div className="w-full overflow-x-auto rounded-lg bg-gray-800/10 ring-1 ring-green-500/30">
             {miningComplete.length > 0 ? (
-              <div className="flex-1 overflow-auto">
+              <div>
                 <table className="w-full">
-                  <thead className="sticky top-0 z-10">
+                  <thead>
                     <tr className="border-b border-white/10 bg-green-900/20">
-                      <th className="p-2 w-10"></th>
-                      <th className="p-2 text-left w-20">Source</th>
-                      <th className="p-2 text-left">Details</th>
+                      <th className="p-3 w-10"></th>
+                      <th className="p-3 text-left w-20">Type</th>
+                      <th className="p-3 text-left">Source</th>
+                      <th className="p-3 text-left">Completed</th>
+                      <th className="p-3 text-left">Facts</th>
                     </tr>
                   </thead>
                   <tbody>
@@ -1003,7 +1074,7 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
                             setDetailPopup({ type: 'nft', nft: ofact });
                           }}
                         >
-                          <td className="p-2 text-center" onClick={(e) => {
+                          <td className="p-3 text-center" onClick={(e) => {
                             e.stopPropagation(); // Don't open detail popup when clicking chevron
                             toggleExpandedOfact(ofact.id);
                           }}>
@@ -1013,26 +1084,34 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
                               <ChevronRight className="h-4 w-4" />
                             )}
                           </td>
-                          <td className="p-2">
+                          <td className="p-3">
                             <div className="flex items-center">
                               <div className="w-6 h-6 flex-shrink-0">
                                 <img 
-                                  src="https://z325ctfzpasszfceuep3x4mv33dncyszsb2gcbg67rjljiguchba.arweave.net/zvXRTLl4JSyURKEfu_GV3sbRYlmQdGEE3vxStKDUEcI"
+                                  src={COLOR_TO_IMAGE_MAP.orange}
                                   alt="Completed OFACT"
                                   className="w-full h-full"
                                 />
                               </div>
                             </div>
                           </td>
-                          <td className="p-2 text-sm">
+                          <td className="p-3 text-sm">
                             <div className="flex flex-col gap-1">
                               <div className="flex items-center gap-1">
                                 <ExternalLink className="h-3 w-3 text-gray-400 flex-shrink-0" />
-                                <div className="text-xs text-gray-300 truncate max-w-[100px]">
+                                <div className="text-gray-300 truncate max-w-md">
                                   {getSourceUrl(ofact)}
                                 </div>
                               </div>
                             </div>
+                          </td>
+                          <td className="p-3 text-sm text-gray-300">
+                            {formatDate(ofact)}
+                          </td>
+                          <td className="p-3 text-sm">
+                            <span className="text-green-400 font-medium">
+                              {(extractedFacts[ofact.id]?.length || 0)} facts
+                            </span>
                           </td>
                         </tr>
                         
@@ -1043,8 +1122,8 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
                             className="border-b border-white/10 bg-green-900/10 hover:bg-green-900/20 cursor-pointer"
                             onClick={() => setDetailPopup({ type: 'afact', afact, parent: ofact })}
                           >
-                            <td className="p-2"></td>
-                            <td className="p-2 pl-4 w-12">
+                            <td className="p-3"></td>
+                            <td className="p-3 pl-6">
                               <div className="w-6 h-6 flex-shrink-0">
                                 <img 
                                   src={COLOR_TO_IMAGE_MAP.yellow}
@@ -1053,14 +1132,14 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
                                 />
                               </div>
                             </td>
-                            <td className="p-2 text-xs">
+                            <td colSpan={3} className="p-3 text-sm">
                               <div className="text-gray-200 line-clamp-2 mb-1">{afact.fact}</div>
                               <div className="flex items-center justify-between">
-                                <div className="text-[10px] text-gray-500 truncate max-w-[60px]">
-                                  ID: {afact.mintId.slice(0, 6)}...
+                                <div className="text-xs text-gray-500">
+                                  ID: {afact.mintId.slice(0, 8)}...
                                 </div>
-                                <div className="text-[10px] text-blue-400 whitespace-nowrap flex-shrink-0">
-                                  Click for details
+                                <div className="text-xs text-blue-400 whitespace-nowrap flex-shrink-0">
+                                  {formatAFactDate(afact.extractedDate)}
                                 </div>
                               </div>
                             </td>
@@ -1070,7 +1149,7 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
                         {/* Show message if no AFacts are found */}
                         {expandedOfacts[ofact.id] && (!extractedFacts[ofact.id] || extractedFacts[ofact.id].length === 0) && (
                           <tr className="border-b border-white/10 bg-green-900/10">
-                            <td colSpan={3} className="p-2 text-center text-xs text-gray-400">
+                            <td colSpan={5} className="p-3 text-center text-xs text-gray-400">
                               No facts extracted from this source
                             </td>
                           </tr>
@@ -1081,12 +1160,12 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
                 </table>
               </div>
             ) : (
-              <div className="p-4 text-center text-gray-400 flex-1 flex items-center justify-center">
+              <div className="p-8 text-center text-gray-400">
                 No completed facts
               </div>
             )}
           </div>
-        </div>
+        )}
       </div>
       
       {selectedNFT && (
@@ -1098,187 +1177,187 @@ const OFactTableView: React.FC<OFactTableViewProps> = ({ walletAddress }) => {
         />
       )}
       
-      {/* Detail Popup Modal */}
-      {detailPopup && (
-        <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
-          <div className="bg-gray-900 rounded-lg w-full max-w-2xl max-h-[80vh] overflow-auto border border-gray-700 shadow-xl">
-            <div className="sticky top-0 bg-gray-900 p-4 border-b border-gray-700 flex justify-between items-center">
-              <h3 className="text-lg font-semibold">
-                {detailPopup.type === 'nft' ? 'OFACT Details' : 'AFACT Details'}
-              </h3>
-              <button 
-                onClick={() => setDetailPopup(null)}
-                className="p-1 rounded-full hover:bg-gray-800"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              {detailPopup.type === 'nft' && detailPopup.nft && (
-                <>
-                  <div className="flex items-center gap-4">
-                                                <div className="w-12 h-12">
-                      <img 
-                        src={detailPopup.nft.content?.metadata?.image || 
-                            (miningState[detailPopup.nft.id] === 'mining_complete' ? COLOR_TO_IMAGE_MAP.orange : COLOR_TO_IMAGE_MAP.red)}
-                        alt="OFACT"
-                        className="w-full h-full rounded"
-                      />
-                    </div>
-                    <div>
-                      <h4 className="font-medium">{detailPopup.nft.content?.metadata?.name || 'OFACT'}</h4>
-                      <div className="text-sm text-gray-400">
-                        {formatDate(detailPopup.nft)}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-gray-400">Source URL</h4>
-                    <div className="flex items-center gap-2 text-white bg-gray-800 p-2 rounded border border-gray-700 break-all">
-                      <ExternalLink className="h-4 w-4 flex-shrink-0 text-blue-400" />
-                      <a 
-                        href={getSourceUrl(detailPopup.nft)} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-400 hover:underline"
-                      >
-                        {getSourceUrl(detailPopup.nft)}
-                      </a>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium text-gray-400">NFT ID</h4>
-                      <div className="text-white bg-gray-800 p-2 rounded border border-gray-700 break-all">
-                        {detailPopup.nft.id}
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium text-gray-400">Status</h4>
-                      <div className="text-white bg-gray-800 p-2 rounded border border-gray-700">
-                        {miningState[detailPopup.nft.id] === 'mining_in_progress' ? (
-                          <div className="flex items-center gap-2">
-                            <div className="text-blue-400 flex items-center gap-1">
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                              Mining in progress ({progressPercent[detailPopup.nft.id]}%)
-                            </div>
-                          </div>
-                        ) : miningState[detailPopup.nft.id] === 'mining_complete' ? (
-                          <div className="flex items-center gap-2 text-green-400">
-                            <CheckCircle className="h-4 w-4" />
-                            Mining complete
-                          </div>
-                        ) : (
-                          <div className="flex items-center gap-2 text-amber-400">
-                            <Clock className="h-4 w-4" />
-                            Open request
-                          </div>
-                        )}
-                        
-                        {miningErrors[detailPopup.nft.id] && (
-                          <div className="mt-2 text-red-400 text-sm">
-                            Error: {miningErrors[detailPopup.nft.id]}
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  {/* Show extracted facts if available */}
-                  {miningState[detailPopup.nft.id] === 'mining_complete' && 
-                   extractedFacts[detailPopup.nft.id] && 
-                   extractedFacts[detailPopup.nft.id].length > 0 && (
-                    <div className="space-y-2 mt-4">
-                      <h4 className="text-sm font-medium text-gray-400">Extracted Facts ({extractedFacts[detailPopup.nft.id].length})</h4>
-                      <div className="bg-gray-800 rounded border border-gray-700 overflow-hidden">
-                        {extractedFacts[detailPopup.nft.id].map((fact, i) => (
-                          <div 
-                            key={fact.mintId} 
-                            className={`p-3 text-sm ${i !== extractedFacts[detailPopup.nft.id].length - 1 ? 'border-b border-gray-700' : ''}`}
-                          >
-                            {fact.fact}
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-              
-              {detailPopup.type === 'afact' && detailPopup.afact && (
-                <>
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-gray-400">Fact Content</h4>
-                    <p className="text-white bg-gray-800 p-3 rounded border border-gray-700">
-                      {detailPopup.afact.fact}
-                    </p>
-                  </div>
-                  
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium text-gray-400">Mint ID</h4>
-                      <div className="text-white bg-gray-800 p-2 rounded border border-gray-700 break-all">
-                        {detailPopup.afact.mintId}
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium text-gray-400">Extracted Date</h4>
-                      <div className="text-white bg-gray-800 p-2 rounded border border-gray-700">
-                        {formatAFactDate(detailPopup.afact.extractedDate)}
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-gray-400">Source URL</h4>
-                    <div className="flex items-center gap-2 text-white bg-gray-800 p-2 rounded border border-gray-700 break-all">
-                      <ExternalLink className="h-4 w-4 flex-shrink-0 text-blue-400" />
-                      <a 
-                        href={detailPopup.afact.sourceUrl} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-blue-400 hover:underline"
-                      >
-                        {detailPopup.afact.sourceUrl}
-                      </a>
-                    </div>
-                  </div>
-                  
-                  {detailPopup.parent && (
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium text-gray-400">Parent OFACT</h4>
-                      <div className="bg-gray-800 p-2 rounded border border-gray-700 flex items-center gap-2">
-                        <div className="w-6 h-6">
-                          <img 
-                            src={COLOR_TO_IMAGE_MAP.orange}
-                            alt="Parent OFACT"
-                            className="w-full h-full"
-                          />
-                        </div>
-                        <div className="text-sm">{detailPopup.parent.id.slice(0, 12)}...</div>
-                      </div>
-                    </div>
-                  )}
-                </>
-              )}
-              
-              <div className="pt-4 flex justify-end">
-                <button 
-                  onClick={() => setDetailPopup(null)}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
-                >
-                  Close
-                </button>
+{/* Detail Popup Modal */}
+{detailPopup && (
+  <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50 p-4">
+    <div className="bg-gray-900 rounded-lg w-full max-w-2xl max-h-[80vh] overflow-auto border border-gray-700 shadow-xl">
+      <div className="sticky top-0 bg-gray-900 p-4 border-b border-gray-700 flex justify-between items-center">
+        <h3 className="text-lg font-semibold">
+          {detailPopup.type === 'nft' ? 'OFACT Details' : 'AFACT Details'}
+        </h3>
+        <button 
+          onClick={() => setDetailPopup(null)}
+          className="p-1 rounded-full hover:bg-gray-800"
+        >
+          <X className="h-5 w-5" />
+        </button>
+      </div>
+      
+      <div className="p-6 space-y-4">
+        {detailPopup.type === 'nft' && detailPopup.nft && (
+          <>
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12">
+                <img 
+                  src={detailPopup.nft.content?.metadata?.image || 
+                      (miningState[detailPopup.nft.id] === 'mining_complete' ? COLOR_TO_IMAGE_MAP.orange : COLOR_TO_IMAGE_MAP.red)}
+                  alt="OFACT"
+                  className="w-full h-full rounded"
+                />
+              </div>
+              <div>
+                <h4 className="font-medium">{detailPopup.nft.content?.metadata?.name || 'OFACT'}</h4>
+                <div className="text-sm text-gray-400">
+                  {formatDate(detailPopup.nft)}
+                </div>
               </div>
             </div>
-          </div>
+            
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-gray-400">Source URL</h4>
+              <div className="flex items-center gap-2 text-white bg-gray-800 p-2 rounded border border-gray-700 break-all">
+                <ExternalLink className="h-4 w-4 flex-shrink-0 text-blue-400" />
+                <a 
+                  href={getSourceUrl(detailPopup.nft)} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:underline"
+                >
+                  {getSourceUrl(detailPopup.nft)}
+                </a>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gray-400">NFT ID</h4>
+                <div className="text-white bg-gray-800 p-2 rounded border border-gray-700 break-all">
+                  {detailPopup.nft.id}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gray-400">Status</h4>
+                <div className="text-white bg-gray-800 p-2 rounded border border-gray-700">
+                  {miningState[detailPopup.nft.id] === 'mining_in_progress' ? (
+                    <div className="flex items-center gap-2">
+                      <div className="text-blue-400 flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Mining in progress ({progressPercent[detailPopup.nft.id]}%)
+                      </div>
+                    </div>
+                  ) : miningState[detailPopup.nft.id] === 'mining_complete' ? (
+                    <div className="flex items-center gap-2 text-green-400">
+                      <CheckCircle className="h-4 w-4" />
+                      Mining complete
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2 text-amber-400">
+                      <Clock className="h-4 w-4" />
+                      Open request
+                    </div>
+                  )}
+                  
+                  {miningErrors[detailPopup.nft.id] && (
+                    <div className="mt-2 text-red-400 text-sm">
+                      Error: {miningErrors[detailPopup.nft.id]}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+            
+            {/* Show extracted facts if available */}
+            {miningState[detailPopup.nft.id] === 'mining_complete' && 
+             extractedFacts[detailPopup.nft.id] && 
+             extractedFacts[detailPopup.nft.id].length > 0 && (
+              <div className="space-y-2 mt-4">
+                <h4 className="text-sm font-medium text-gray-400">Extracted Facts ({extractedFacts[detailPopup.nft.id].length})</h4>
+                <div className="bg-gray-800 rounded border border-gray-700 overflow-hidden">
+                  {extractedFacts[detailPopup.nft.id].map((fact, i) => (
+                    <div 
+                      key={fact.mintId} 
+                      className={`p-3 text-sm ${i !== extractedFacts[detailPopup.nft.id].length - 1 ? 'border-b border-gray-700' : ''}`}
+                    >
+                      {fact.fact}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </>
+        )}
+        
+        {detailPopup.type === 'afact' && detailPopup.afact && (
+          <>
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-gray-400">Fact Content</h4>
+              <p className="text-white bg-gray-800 p-3 rounded border border-gray-700">
+                {detailPopup.afact.fact}
+              </p>
+            </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gray-400">Mint ID</h4>
+                <div className="text-white bg-gray-800 p-2 rounded border border-gray-700 break-all">
+                  {detailPopup.afact.mintId}
+                </div>
+              </div>
+              
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gray-400">Extracted Date</h4>
+                <div className="text-white bg-gray-800 p-2 rounded border border-gray-700">
+                  {formatAFactDate(detailPopup.afact.extractedDate)}
+                </div>
+              </div>
+            </div>
+            
+            <div className="space-y-2">
+              <h4 className="text-sm font-medium text-gray-400">Source URL</h4>
+              <div className="flex items-center gap-2 text-white bg-gray-800 p-2 rounded border border-gray-700 break-all">
+                <ExternalLink className="h-4 w-4 flex-shrink-0 text-blue-400" />
+                <a 
+                  href={detailPopup.afact.sourceUrl} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-400 hover:underline"
+                >
+                  {detailPopup.afact.sourceUrl}
+                </a>
+              </div>
+            </div>
+            
+            {detailPopup.parent && (
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-gray-400">Parent OFACT</h4>
+                <div className="bg-gray-800 p-2 rounded border border-gray-700 flex items-center gap-2">
+                  <div className="w-6 h-6">
+                    <img 
+                      src={COLOR_TO_IMAGE_MAP.orange}
+                      alt="Parent OFACT"
+                      className="w-full h-full"
+                    />
+                  </div>
+                  <div className="text-sm">{detailPopup.parent.id.slice(0, 12)}...</div>
+                </div>
+              </div>
+            )}
+          </>
+        )}
+        
+        <div className="pt-4 flex justify-end">
+          <button 
+            onClick={() => setDetailPopup(null)}
+            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+          >
+            Close
+          </button>
         </div>
-      )}
+      </div>
+    </div>
+  </div>
+)}
     </div>
   );
 };
