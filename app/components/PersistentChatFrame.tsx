@@ -69,6 +69,10 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
         overflow: 'hidden',
         WebkitOverflowScrolling: 'touch',
         transform: 'translateZ(0)',
+        margin: '0',
+        padding: '0',
+        border: 'none',
+        outline: 'none',
       }}
     >
       <iframe 
@@ -97,16 +101,23 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
       <style jsx>{`
         @media screen and (max-width: 768px) {
           .librechat-iframe-container {
-            top: 80px !important; /* Account for mobile browser chrome */
+            top: 64px !important; /* Keep same as desktop for now */
             margin-left: 0 !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
+            outline: none !important;
           }
         }
         
         /* iOS Safari specific fixes */
         @media screen and (max-width: 768px) and (-webkit-min-device-pixel-ratio: 1) {
           .librechat-iframe-container {
-            top: 80px !important;
+            top: 64px !important; /* Match desktop */
             position: fixed !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            border: none !important;
           }
           
           .librechat-iframe {
