@@ -22,6 +22,10 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
       const container = containerRef.current;
       
       if (iframe && container && isActive) {
+        // Update container position based on current sidebar width
+        const sidebarWidth = getSidebarWidth();
+        container.style.left = sidebarWidth;
+        
         // Force iframe to recalculate position on mobile
         iframe.style.height = '99%';
         setTimeout(() => {
@@ -54,15 +58,13 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
     };
   }, [isActive]);
 
-  // Calculate proper sidebar width - adjust this value based on your actual sidebar width
+  // Calculate proper sidebar width based on your actual sidebar
   const getSidebarWidth = () => {
     if (typeof window === 'undefined') return '0';
     
-    // Check if screen is large enough for sidebar
+    // Your sidebar is lg:w-20 (80px) and only visible on lg+ screens
     if (window.innerWidth >= 1024) {
-      // Try to detect actual sidebar width or use common sidebar widths
-      // Common sidebar widths: 260px, 280px, 320px
-      return '260px'; // Adjust this to match your actual sidebar width
+      return '80px'; // This matches your lg:w-20 class
     }
     return '0';
   };
@@ -77,7 +79,7 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
         left: getSidebarWidth(), // Use proper sidebar width
         right: '0',
         bottom: '0',
-        zIndex: isActive ? 10 : -1,
+        zIndex: isActive ? 40 : -1, // Changed from 10 to 40 to match your header's z-40
         overflow: 'hidden',
         WebkitOverflowScrolling: 'touch',
         transform: 'translateZ(0)',
