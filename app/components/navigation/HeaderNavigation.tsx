@@ -42,7 +42,7 @@ const HeaderNavigation = ({ setSidebarOpen }: HeaderNavigationProps) => {
           
           {/* Center - DeFacts text */}
           <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center">
-            <span className="text-white font-semibold text-lg">DeFacts</span>
+            <span className="text-white font-semibold text-2xl">DeFacts</span>
           </div>
           
           {/* Right side - Debug info, DeFacts Balance, and Wallet balance */}
