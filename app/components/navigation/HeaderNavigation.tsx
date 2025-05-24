@@ -40,9 +40,9 @@ const HeaderNavigation = ({ setSidebarOpen }: HeaderNavigationProps) => {
             </button>
             
             {/* Logo + DeFacts text for desktop */}
-            <div className="hidden lg:flex items-center gap-x-3">
+            <div className="hidden lg:flex items-center">
               <Logo />
-              <span className="text-white font-semibold text-lg">DeFacts</span>
+              <span className="text-white font-semibold text-lg ml-6">DeFacts</span>
             </div>
           </div>
 
