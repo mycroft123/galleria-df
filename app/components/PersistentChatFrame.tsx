@@ -54,6 +54,19 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
     };
   }, [isActive]);
 
+  // Calculate proper sidebar width - adjust this value based on your actual sidebar width
+  const getSidebarWidth = () => {
+    if (typeof window === 'undefined') return '0';
+    
+    // Check if screen is large enough for sidebar
+    if (window.innerWidth >= 1024) {
+      // Try to detect actual sidebar width or use common sidebar widths
+      // Common sidebar widths: 260px, 280px, 320px
+      return '260px'; // Adjust this to match your actual sidebar width
+    }
+    return '0';
+  };
+
   return (
     <div 
       ref={containerRef}
@@ -61,10 +74,9 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
       style={{ 
         position: 'fixed',
         top: '64px', // Account for your header height
-        left: '0',
+        left: getSidebarWidth(), // Use proper sidebar width
         right: '0',
         bottom: '0',
-        marginLeft: typeof window !== 'undefined' && window.innerWidth >= 1024 ? '80px' : '0', // lg:left-20 equivalent
         zIndex: isActive ? 10 : -1,
         overflow: 'hidden',
         WebkitOverflowScrolling: 'touch',
@@ -99,10 +111,10 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
       
       {/* Add CSS for mobile-specific fixes */}
       <style jsx>{`
-        @media screen and (max-width: 768px) {
+        @media screen and (max-width: 1024px) {
           .librechat-iframe-container {
-            top: 64px !important; /* Keep same as desktop for now */
-            margin-left: 0 !important;
+            left: 0 !important; /* No sidebar on mobile */
+            top: 64px !important;
             margin: 0 !important;
             padding: 0 !important;
             border: none !important;
@@ -113,7 +125,8 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
         /* iOS Safari specific fixes */
         @media screen and (max-width: 768px) and (-webkit-min-device-pixel-ratio: 1) {
           .librechat-iframe-container {
-            top: 64px !important; /* Match desktop */
+            left: 0 !important;
+            top: 64px !important;
             position: fixed !important;
             margin: 0 !important;
             padding: 0 !important;
