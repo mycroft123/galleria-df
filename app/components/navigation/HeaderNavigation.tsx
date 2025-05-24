@@ -40,8 +40,8 @@ const HeaderNavigation = ({ setSidebarOpen }: HeaderNavigationProps) => {
             </button>
           </div>
           
-          {/* Center - DeFacts text */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center">
+          {/* Center - DeFacts text moved right by sidebar width */}
+          <div className="absolute left-1/2 transform -translate-x-1/2 lg:translate-x-20 flex items-center">
             <span className="text-white font-semibold text-2xl">DeFacts.ai</span>
           </div>
           
