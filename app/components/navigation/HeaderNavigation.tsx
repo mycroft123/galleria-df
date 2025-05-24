@@ -28,7 +28,7 @@ const HeaderNavigation = ({ setSidebarOpen }: HeaderNavigationProps) => {
     <>
       <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 bg-black bg-opacity-40 px-4 shadow-sm backdrop-blur-md sm:gap-x-6 sm:px-6 lg:px-8">
         <div className="flex w-full items-center justify-between self-stretch">
-          {/* Left side - Mobile menu button and Logo + DeFacts text */}
+          {/* Left side - Mobile menu button */}
           <div className="flex items-center">
             <button
               type="button"
@@ -38,20 +38,13 @@ const HeaderNavigation = ({ setSidebarOpen }: HeaderNavigationProps) => {
               <span className="sr-only">Open sidebar</span>
               <Bars3Icon className="h-6 w-6 text-white" aria-hidden="true" />
             </button>
-            
-            {/* Logo + DeFacts text for desktop */}
-            <div className="hidden lg:block">
-              <Logo />
-            </div>
-            <div className="hidden lg:block">
-              <span className="text-white font-semibold text-xl ml-8">DeFacts</span>
-            </div>
           </div>
+          
 
-          {/* Left-center - DeFacts text (visible only on mobile) */}
-          <div className="absolute left-16 flex items-center lg:hidden">
-            <span className="text-white font-semibold text-lg">DeFacts</span>
-          </div>
+        {/* Left-center - DeFacts text (visible only on mobile) */}
+        <div className="absolute left-16 flex items-center lg:hidden">
+          <span className="text-white font-semibold text-lg">DeFacts</span>
+        </div>
           
           {/* Right side - Debug info, DeFacts Balance, and Wallet balance */}
           <div className="flex items-center gap-x-2 sm:flex lg:gap-x-4">
