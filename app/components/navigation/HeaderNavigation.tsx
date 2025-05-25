@@ -39,20 +39,20 @@ const HeaderNavigation = ({ setSidebarOpen }: HeaderNavigationProps) => {
               <Bars3Icon className="h-6 w-6 text-white" aria-hidden="true" />
             </button>
           </div>
-          
-          {/* Center - DeFacts text moved right by sidebar width */}
-          <div className="absolute left-1/2 transform -translate-x-1/2 lg:translate-x-5 flex items-center">
+                     
+          {/* Center - DeFacts text */}
+          <div className="absolute left-1/2 transform -translate-x-1/2 flex items-center">
             <span className="text-white font-semibold text-2xl">DeFacts.ai</span>
           </div>
-          
+                     
           {/* Right side - Debug info, DeFacts Balance, and Wallet balance */}
           <div className="flex items-center gap-x-2 sm:flex lg:gap-x-4">
             {/* Add wallet debug component */}
             {/*<WalletDebug />*/}
-            
+                         
             {/* Add DefactsBalance component */}
             <DefactsBalance />
-            
+                         
             {/* Keep the original WalletBalance as last item */}
            {/*  <WalletBalance />*/}
           </div>
