@@ -91,8 +91,8 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
     >
       <iframe 
         ref={iframeRef}
-        src="https://librechat-production-97e2.up.railway.app/c/new" 
-        className="librechat-iframe"
+        src="https://defacts-production-e393.up.railway.app/c/new" 
+        className="defacts-iframe"
         title="DeFacts"
         allow="microphone; camera; geolocation"
         sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
