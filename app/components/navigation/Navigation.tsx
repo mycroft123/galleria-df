@@ -39,58 +39,6 @@ const FULL_NAV = [
   { name: "URL Input", href: "url", icon: LinkIcon }
 ];
 
-// Function to check the entire DOM for any balance indicators
-const checkForDefactsBalance = () => {
-  try {
-    // Check all div elements in the DOM
-    const allElements = document.querySelectorAll('div');
-    let foundEmptyDeFacts = false;
-    let foundBalance = "";
-    let htmlContent = "";
-    
-    // Regular expressions for different balance formats
-    const emptyRegex = /--\s*DeFacts/i;
-    const balanceRegex = /(\d[\d,.]+)\s*DF/i;
-    
-    // Look for balance indicators in each element
-    for (let i = 0; i < allElements.length; i++) {
-      const el = allElements[i];
-      if (el.textContent) {
-        htmlContent = el.textContent.trim();
-        
-        // Check for empty balance indicator
-        if (emptyRegex.test(htmlContent)) {
-          foundEmptyDeFacts = true;
-          console.log("Found empty DeFacts:", htmlContent);
-        }
-        
-        // Check for numeric balance
-        const match = htmlContent.match(balanceRegex);
-        if (match) {
-          foundBalance = match[1]; // This captures the numeric part
-          console.log("Found DeFacts balance:", foundBalance);
-        }
-      }
-    }
-    
-    // If we explicitly found a balance, that takes precedence
-    if (foundBalance !== "") {
-      return { hasBalance: true, balance: foundBalance };
-    }
-    
-    // If we found an empty indicator and no balance, we know there's no balance
-    if (foundEmptyDeFacts) {
-      return { hasBalance: false, balance: "" };
-    }
-    
-    // If we didn't find either, assume no balance (MORE RESTRICTIVE)
-    return { hasBalance: false, balance: "unknown" };
-  } catch (e) {
-    console.error("Error checking DeFacts balance:", e);
-    return { hasBalance: false, balance: "" };
-  }
-};
-
 // This is the inner component that uses the wallet hook
 const NavigationContent = ({
     params,
@@ -124,68 +72,100 @@ const NavigationContent = ({
     const [detectedBalance, setDetectedBalance] = useState("");
     const checkCountRef = useRef(0);
     
-    // Set up frequent balance checks and DOM observer
+    // PostMessage implementation for cross-domain communication
     useEffect(() => {
       if (typeof window === 'undefined') return;
       
-      // Function to run the balance check
-      const runBalanceCheck = () => {
-        checkCountRef.current += 1;
-        const { hasBalance, balance } = checkForDefactsBalance();
+      // Configuration - Update this with your LibreChat domain
+      const LIBRECHAT_ORIGIN = process.env.NEXT_PUBLIC_LIBRECHAT_URL || 'https://your-librechat.railway.app';
+      
+      // Handle incoming balance messages
+      const handleMessage = (event: MessageEvent) => {
+        // Security: Allow localhost for development and specific production origin
+        const allowedOrigins = [
+          'http://localhost:3000',
+          'http://localhost:3001', 
+          'http://localhost:5173', // Vite dev server
+          LIBRECHAT_ORIGIN
+        ];
         
-        // Only update state if there's a change to avoid re-renders
-        if (hasBalance !== hasDeFacts || balance !== detectedBalance) {
-          console.log("Balance check update:", { hasBalance, balance, checkCount: checkCountRef.current });
+        const isAllowedOrigin = allowedOrigins.some(origin => event.origin.startsWith(origin));
+        
+        if (!isAllowedOrigin) {
+          console.warn('Rejected message from unauthorized origin:', event.origin);
+          return;
+        }
+        
+        // Check if it's a balance update message
+        if (event.data?.type === 'defacts-token-balance') {
+          const balance = event.data.balance;
+          const hasBalance = typeof balance === 'number' && balance > 0;
           
-          // Update our state
+          console.log('Received balance from iframe:', balance, 'hasBalance:', hasBalance);
+          
+          // Update check count
+          checkCountRef.current += 1;
+          
+          // Update state
           setHasDeFacts(hasBalance);
-          setDetectedBalance(balance);
+          setDetectedBalance(balance?.toString() || '0');
+          setShowFullNavigation(hasBalance);
           
-          // THE KEY PART: Update navigation state based on balance
-          // We only need wallet connected AND balance
-          const shouldShowFullNav = hasBalance;
-          setShowFullNavigation(shouldShowFullNav);
-          
-          // CRITICAL: Update debug info consistently with our state
+          // Update debug info
           setDebugInfo(prev => ({
             ...prev,
-            showFullNav: shouldShowFullNav,
+            showFullNav: hasBalance,
             hasWalletBalance: hasBalance,
-            foundBalance: balance,
-            navigationItems: shouldShowFullNav ? FULL_NAV.map(item => item.name) : CHAT_ONLY_NAV.map(item => item.name),
-            checkCount: checkCountRef.current
+            foundBalance: balance?.toString() || '0',
+            navigationItems: hasBalance ? FULL_NAV.map(item => item.name) : CHAT_ONLY_NAV.map(item => item.name),
+            checkCount: checkCountRef.current,
+            currentView: prev.currentView
           }));
-        } else if (checkCountRef.current % 5 === 0) {
-          // Just update the check count periodically
-          setDebugInfo(prev => ({ ...prev, checkCount: checkCountRef.current }));
         }
       };
       
-      // Run initial check
-      runBalanceCheck();
+      // Add message listener
+      window.addEventListener('message', handleMessage);
       
-      // Set up interval to check frequently
-      const checkInterval = setInterval(runBalanceCheck, 500); // Check every 500ms
-      
-      // Set up mutation observer to detect DOM changes
-      const observer = new MutationObserver(() => {
-        runBalanceCheck();
-      });
-      
-      // Start observing the entire document for changes
-      observer.observe(document.body, { 
-        childList: true, 
-        subtree: true,
-        characterData: true, 
-        attributes: true 
-      });
-      
-      // Clean up
-      return () => {
-        clearInterval(checkInterval);
-        observer.disconnect();
+      // Function to request balance from iframe
+      const requestBalance = () => {
+        const iframe = document.querySelector('iframe') as HTMLIFrameElement;
+        if (iframe?.contentWindow) {
+          try {
+            iframe.contentWindow.postMessage(
+              { type: 'request-token-balance' },
+              '*' // We use * here because the iframe will verify the origin
+            );
+            console.log('Requested balance from iframe');
+          } catch (e) {
+            console.error('Error requesting balance:', e);
+          }
+        }
       };
-    }, [hasDeFacts, detectedBalance]);
+      
+      // Request balance periodically
+      const requestInterval = setInterval(requestBalance, 3000); // Every 3 seconds
+      
+      // Initial requests after iframe likely loaded
+      setTimeout(requestBalance, 1000);
+      setTimeout(requestBalance, 2000);
+      setTimeout(requestBalance, 3000);
+      
+      // Also request when iframe loads
+      const iframe = document.querySelector('iframe') as HTMLIFrameElement;
+      if (iframe) {
+        iframe.addEventListener('load', () => {
+          console.log('Iframe loaded, requesting balance');
+          setTimeout(requestBalance, 500);
+        });
+      }
+      
+      // Cleanup
+      return () => {
+        window.removeEventListener('message', handleMessage);
+        clearInterval(requestInterval);
+      };
+    }, []);
     
     // Handle redirection if navigation is restricted
     useEffect(() => {
@@ -221,8 +201,8 @@ const NavigationContent = ({
     
     return (
       <>
-        {/* Debug overlay */}
-          {/*<div 
+        {/* Debug overlay - Uncomment to see debug info */}
+        {/*<div 
           style={{
             position: 'fixed',
             bottom: '10px',
