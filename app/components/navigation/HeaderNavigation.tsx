@@ -21,9 +21,11 @@ const WalletDebug = dynamic(() => import('./WalletDebug'), {
 
 interface HeaderNavigationProps {
   setSidebarOpen: (open: boolean) => void;
+  balance?: string;
+  hasBalance?: boolean;
 }
 
-const HeaderNavigation = ({ setSidebarOpen }: HeaderNavigationProps) => {
+const HeaderNavigation = ({ setSidebarOpen, balance, hasBalance }: HeaderNavigationProps) => {
   return (
     <>
       <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 bg-black bg-opacity-40 px-4 shadow-sm backdrop-blur-md sm:gap-x-6 sm:px-6 lg:px-8">
@@ -50,8 +52,8 @@ const HeaderNavigation = ({ setSidebarOpen }: HeaderNavigationProps) => {
             {/* Add wallet debug component */}
             {/*<WalletDebug />*/}
                          
-            {/* Add DefactsBalance component */}
-            <DefactsBalance />
+            {/* Add DefactsBalance component with balance prop */}
+            <DefactsBalance balance={balance} hasBalance={hasBalance} />
                          
             {/* Keep the original WalletBalance as last item */}
            {/*  <WalletBalance />*/}
