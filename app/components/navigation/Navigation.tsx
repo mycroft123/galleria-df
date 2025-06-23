@@ -76,18 +76,13 @@ const NavigationContent = ({
     useEffect(() => {
       if (typeof window === 'undefined') return;
       
-      // Configuration - Update this with your LibreChat domain
-      const LIBRECHAT_ORIGIN = process.env.NEXT_PUBLIC_LIBRECHAT_URL || 'https://your-librechat.railway.app';
-      
-      // Handle incoming balance messages
-      const handleMessage = (event: MessageEvent) => {
-        // Security: Allow localhost for development and specific production origin
-        const allowedOrigins = [
-          'http://localhost:3000',
-          'http://localhost:3001', 
-          'http://localhost:5173', // Vite dev server
-          LIBRECHAT_ORIGIN
-        ];
+      const LIBRECHAT_ORIGIN = 'https://defacts-production-e393.up.railway.app'; // ← Your LibreChat domain
+
+      const allowedOrigins = [
+        'http://localhost:3000',
+        'http://localhost:3001',
+        'https://defacts-production-e393.up.railway.app' // ← Your LibreChat domain
+      ];
         
         const isAllowedOrigin = allowedOrigins.some(origin => event.origin.startsWith(origin));
         
