@@ -279,20 +279,8 @@ const NavigationContent = ({
         requestBalance();
       }, 4000);
       
-      // Also request when iframe loads
-      const iframe = document.querySelector('iframe') as HTMLIFrameElement;
-      if (iframe) {
-        console.log('🖼️ iframe found, adding load listener...');
-        iframe.addEventListener('load', () => {
-          console.log('✅ iframe loaded event fired!');
-          setTimeout(() => {
-            console.log('📤 Sending balance request after iframe load...');
-            requestBalance();
-          }, 1000);
-        });
-      } else {
-        console.log('⚠️ No iframe found during setup');
-      }
+      // Removed iframe load listener - it was causing endless reloading
+      // The periodic interval and initial timeouts are sufficient
       
       // Cleanup
       return () => {
