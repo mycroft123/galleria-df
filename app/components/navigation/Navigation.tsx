@@ -350,7 +350,12 @@ const NavigationContent = ({
         />
 
         {/* Navbar */}
-        <HeaderNavigation setSidebarOpen={setSidebarOpen} />
+        {/* Navbar */}
+        <HeaderNavigation 
+          setSidebarOpen={setSidebarOpen} 
+          balance={detectedBalance}
+          hasBalance={hasDeFacts}
+        />
       </>
     );
 };
