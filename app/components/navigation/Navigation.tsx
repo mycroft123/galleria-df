@@ -69,7 +69,8 @@ const NavigationContent = ({
       lastOrigin: "",
       messageHistory: [] as string[],
       iframeFound: false,
-      requestsSent: 0
+      requestsSent: 0,
+      allMessagesCount: 0
     });
     
     // Track if we have a confirmed DeFacts balance and the detected value
@@ -77,6 +78,7 @@ const NavigationContent = ({
     const [detectedBalance, setDetectedBalance] = useState("");
     const checkCountRef = useRef(0);
     const requestsSentRef = useRef(0);
+    const allMessagesRef = useRef(0);
     
     // PostMessage implementation for cross-domain communication
     useEffect(() => {
@@ -89,7 +91,28 @@ const NavigationContent = ({
 
       // Handle incoming balance messages
       const handleMessage = (event: MessageEvent) => {
-        console.log('📨 Message received from:', event.origin);
+        // Log ALL messages first
+        allMessagesRef.current += 1;
+        console.log('🌐 ALL MESSAGES - Message #' + allMessagesRef.current + ':', {
+          origin: event.origin,
+          data: event.data,
+          source: event.source,
+          timestamp: new Date().toLocaleTimeString()
+        });
+        
+        // Update debug info for all messages
+        setDebugInfo(prev => ({
+          ...prev,
+          allMessagesCount: allMessagesRef.current
+        }));
+        
+        // Skip if from same origin (not cross-frame)
+        if (event.origin === window.location.origin) {
+          console.log('⏭️ Skipping same-origin message');
+          return;
+        }
+        
+        console.log('📨 Cross-origin message received from:', event.origin);
         console.log('📦 Message data:', event.data);
         
         // Update debug with last message info
@@ -97,7 +120,7 @@ const NavigationContent = ({
           ...prev,
           lastOrigin: event.origin,
           lastMessageReceived: event.data,
-          messageHistory: [...prev.messageHistory.slice(-4), `${new Date().toLocaleTimeString()}: ${event.origin}`]
+          messageHistory: [...prev.messageHistory.slice(-4), `${new Date().toLocaleTimeString()}: ${event.origin} - ${JSON.stringify(event.data).substring(0, 50)}...`]
         }));
         
         // Security: Check allowed origins
@@ -128,6 +151,7 @@ const NavigationContent = ({
           console.log('   Raw balance:', balance);
           console.log('   Has balance:', hasBalance);
           console.log('   Type of balance:', typeof balance);
+          console.log('   Message source:', event.data.source);
           
           // Update check count
           checkCountRef.current += 1;
@@ -301,7 +325,8 @@ const NavigationContent = ({
               {debugInfo.hasWalletBalance ? 'YES' : 'NO'}
             </span></div>
             <div>🔢 Balance Value: <span style={{ color: '#60a5fa' }}>{debugInfo.foundBalance || 'none'}</span></div>
-            <div>📨 Messages Received: <span style={{ color: '#a78bfa' }}>{debugInfo.checkCount}</span></div>
+            <div>📨 Balance Messages: <span style={{ color: '#a78bfa' }}>{debugInfo.checkCount}</span></div>
+            <div>🌐 All Messages: <span style={{ color: '#facc15' }}>{debugInfo.allMessagesCount}</span></div>
             <div>📤 Requests Sent: <span style={{ color: '#facc15' }}>{debugInfo.requestsSent}</span></div>
             <div>🖼️ iframe Found: <span style={{ color: debugInfo.iframeFound ? '#4ade80' : '#f87171' }}>
               {debugInfo.iframeFound ? 'YES' : 'NO'}
