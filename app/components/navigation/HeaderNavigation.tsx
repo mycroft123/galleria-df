@@ -65,7 +65,7 @@ const HeaderNavigation = ({ setSidebarOpen, balance, hasBalance }: HeaderNavigat
                      
           {/* Right side - Debug info, DeFacts Balance, and Wallet balance */}
           <div className="flex items-center gap-x-2 sm:flex lg:gap-x-4">
-            {/* Debug display in UI (temporary) */}
+            {/* Debug display in UI (temporary) 
             <div style={{
               fontSize: '10px',
               color: 'yellow',
@@ -74,7 +74,7 @@ const HeaderNavigation = ({ setSidebarOpen, balance, hasBalance }: HeaderNavigat
               borderRadius: '4px'
             }}>
               B: {balance || 'null'} | H: {hasBalance ? 'Y' : 'N'}
-            </div>
+            </div>*/}
             
             {/* Add wallet debug component */}
             {/*<WalletDebug />*/}
