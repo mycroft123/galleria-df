@@ -288,7 +288,7 @@ const NavigationContent = ({
     
     return (
       <>
-        {/* Debug overlay - Consider making this conditional for production */}
+        {/* Debug overlay - Consider making this conditional for production
         <div 
           style={{
             position: 'fixed',
@@ -325,7 +325,7 @@ const NavigationContent = ({
             <div>📤 Requests Sent: <span style={{ color: '#facc15' }}>{debugInfo.requestsSent}</span></div>
             <div>📱 Current View: <span style={{ color: '#60a5fa' }}>{currentView}</span></div>
           </div>
-        </div>
+        </div> */}
       
         {/* Mobile navigation */}
         <MobileNavigation
