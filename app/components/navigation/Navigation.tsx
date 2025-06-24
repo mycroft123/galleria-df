@@ -70,7 +70,11 @@ const NavigationContent = ({
       messageHistory: [] as string[],
       iframeFound: false,
       requestsSent: 0,
-      allMessagesCount: 0
+      allMessagesCount: 0,
+      errorCount: 0,
+      loadingCount: 0,
+      authError: false,
+      lastErrorTime: null as string | null
     });
     
     // Track if we have a confirmed DeFacts balance and the detected value
@@ -79,6 +83,8 @@ const NavigationContent = ({
     const checkCountRef = useRef(0);
     const requestsSentRef = useRef(0);
     const allMessagesRef = useRef(0);
+    const requestIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const hasAuthErrorRef = useRef(false);
     
     // PostMessage implementation for cross-domain communication
     useEffect(() => {
@@ -142,7 +148,7 @@ const NavigationContent = ({
         
         console.log('✅ Origin authorized');
         
-        // Check if it's a balance update message
+        // Handle different message types
         if (event.data?.type === 'defacts-token-balance') {
           const balance = event.data.balance;
           const hasBalance = typeof balance === 'number' && balance > 0;
@@ -161,6 +167,9 @@ const NavigationContent = ({
           setDetectedBalance(balance?.toString() || '0');
           setShowFullNavigation(hasBalance);
           
+          // Clear auth error state
+          hasAuthErrorRef.current = false;
+          
           console.log('🔄 State Updated:');
           console.log('   showFullNavigation:', hasBalance);
           console.log('   detectedBalance:', balance?.toString() || '0');
@@ -173,8 +182,40 @@ const NavigationContent = ({
             foundBalance: balance?.toString() || '0',
             navigationItems: hasBalance ? FULL_NAV.map(item => item.name) : CHAT_ONLY_NAV.map(item => item.name),
             checkCount: checkCountRef.current,
-            currentView: prev.currentView
+            currentView: prev.currentView,
+            authError: false
           }));
+          
+        } else if (event.data?.type === 'defacts-token-balance-error') {
+          console.log('❌ Balance Error Received:', event.data.error);
+          console.log('   Status:', event.data.status);
+          
+          hasAuthErrorRef.current = true;
+          
+          // Update debug info
+          setDebugInfo(prev => ({
+            ...prev,
+            errorCount: prev.errorCount + 1,
+            authError: event.data.status === 401,
+            lastErrorTime: new Date().toLocaleTimeString()
+          }));
+          
+          // Stop requesting if auth error
+          if (event.data.status === 401 && requestIntervalRef.current) {
+            console.log('🛑 Stopping balance requests due to auth error');
+            clearInterval(requestIntervalRef.current);
+            requestIntervalRef.current = null;
+          }
+          
+        } else if (event.data?.type === 'defacts-token-balance-loading') {
+          console.log('⏳ Balance Loading Status Received');
+          
+          // Update debug info
+          setDebugInfo(prev => ({
+            ...prev,
+            loadingCount: prev.loadingCount + 1
+          }));
+          
         } else {
           console.log('🤔 Message type not recognized:', event.data?.type);
         }
@@ -186,6 +227,12 @@ const NavigationContent = ({
       
       // Function to request balance from iframe
       const requestBalance = () => {
+        // Skip if we have an auth error
+        if (hasAuthErrorRef.current) {
+          console.log('🚫 Skipping balance request due to auth error');
+          return;
+        }
+        
         const iframe = document.querySelector('iframe') as HTMLIFrameElement;
         
         if (iframe?.contentWindow) {
@@ -216,26 +263,21 @@ const NavigationContent = ({
         }
       };
       
-      // Request balance periodically
-      console.log('⏰ Setting up periodic balance requests (every 3 seconds)...');
-      const requestInterval = setInterval(requestBalance, 3000);
+      // Request balance periodically with backoff
+      console.log('⏰ Setting up periodic balance requests...');
+      requestIntervalRef.current = setInterval(requestBalance, 5000); // Increased to 5 seconds
       
       // Initial requests after iframe likely loaded
       console.log('🎯 Scheduling initial balance requests...');
       setTimeout(() => {
-        console.log('⏱️ Initial request 1 (after 1s)');
-        requestBalance();
-      }, 1000);
-      
-      setTimeout(() => {
-        console.log('⏱️ Initial request 2 (after 2s)');
+        console.log('⏱️ Initial request 1 (after 2s)');
         requestBalance();
       }, 2000);
       
       setTimeout(() => {
-        console.log('⏱️ Initial request 3 (after 3s)');
+        console.log('⏱️ Initial request 2 (after 4s)');
         requestBalance();
-      }, 3000);
+      }, 4000);
       
       // Also request when iframe loads
       const iframe = document.querySelector('iframe') as HTMLIFrameElement;
@@ -246,7 +288,7 @@ const NavigationContent = ({
           setTimeout(() => {
             console.log('📤 Sending balance request after iframe load...');
             requestBalance();
-          }, 500);
+          }, 1000);
         });
       } else {
         console.log('⚠️ No iframe found during setup');
@@ -256,7 +298,9 @@ const NavigationContent = ({
       return () => {
         console.log('🧹 Cleaning up Navigation PostMessage listeners...');
         window.removeEventListener('message', handleMessage);
-        clearInterval(requestInterval);
+        if (requestIntervalRef.current) {
+          clearInterval(requestIntervalRef.current);
+        }
       };
     }, []);
     
@@ -326,6 +370,14 @@ const NavigationContent = ({
             </span></div>
             <div>🔢 Balance Value: <span style={{ color: '#60a5fa' }}>{debugInfo.foundBalance || 'none'}</span></div>
             <div>📨 Balance Messages: <span style={{ color: '#a78bfa' }}>{debugInfo.checkCount}</span></div>
+            <div>❌ Error Messages: <span style={{ color: debugInfo.errorCount > 0 ? '#f87171' : '#4ade80' }}>{debugInfo.errorCount}</span></div>
+            <div>⏳ Loading Messages: <span style={{ color: '#facc15' }}>{debugInfo.loadingCount}</span></div>
+            <div>🔐 Auth Error: <span style={{ color: debugInfo.authError ? '#f87171' : '#4ade80' }}>
+              {debugInfo.authError ? 'YES' : 'NO'}
+            </span></div>
+            {debugInfo.lastErrorTime && (
+              <div>⏰ Last Error: <span style={{ color: '#f87171' }}>{debugInfo.lastErrorTime}</span></div>
+            )}
             <div>🌐 All Messages: <span style={{ color: '#facc15' }}>{debugInfo.allMessagesCount}</span></div>
             <div>📤 Requests Sent: <span style={{ color: '#facc15' }}>{debugInfo.requestsSent}</span></div>
             <div>🖼️ iframe Found: <span style={{ color: debugInfo.iframeFound ? '#4ade80' : '#f87171' }}>
@@ -374,7 +426,6 @@ const NavigationContent = ({
           params={params}
         />
 
-        {/* Navbar */}
         {/* Navbar */}
         <HeaderNavigation 
           setSidebarOpen={setSidebarOpen} 
