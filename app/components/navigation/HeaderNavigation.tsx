@@ -1,5 +1,5 @@
 "use client";
-import React from "react";
+import React, { useEffect } from "react";
 import { Bars3Icon } from "@heroicons/react/24/outline";
 import dynamic from 'next/dynamic';
 import { Logo } from "@/app/components";
@@ -26,6 +26,22 @@ interface HeaderNavigationProps {
 }
 
 const HeaderNavigation = ({ setSidebarOpen, balance, hasBalance }: HeaderNavigationProps) => {
+  // Debug logging
+  useEffect(() => {
+    console.log('🎯 HeaderNavigation Debug:');
+    console.log('   balance prop:', balance);
+    console.log('   hasBalance prop:', hasBalance);
+    console.log('   balance type:', typeof balance);
+    console.log('   hasBalance type:', typeof hasBalance);
+  }, [balance, hasBalance]);
+
+  // Also log on every render
+  console.log('🔄 HeaderNavigation Render:', {
+    balance,
+    hasBalance,
+    timestamp: new Date().toLocaleTimeString()
+  });
+
   return (
     <>
       <div className="sticky top-0 z-40 flex h-16 shrink-0 items-center gap-x-4 bg-black bg-opacity-40 px-4 shadow-sm backdrop-blur-md sm:gap-x-6 sm:px-6 lg:px-8">
@@ -49,6 +65,17 @@ const HeaderNavigation = ({ setSidebarOpen, balance, hasBalance }: HeaderNavigat
                      
           {/* Right side - Debug info, DeFacts Balance, and Wallet balance */}
           <div className="flex items-center gap-x-2 sm:flex lg:gap-x-4">
+            {/* Debug display in UI (temporary) */}
+            <div style={{
+              fontSize: '10px',
+              color: 'yellow',
+              backgroundColor: 'rgba(0,0,0,0.5)',
+              padding: '2px 6px',
+              borderRadius: '4px'
+            }}>
+              B: {balance || 'null'} | H: {hasBalance ? 'Y' : 'N'}
+            </div>
+            
             {/* Add wallet debug component */}
             {/*<WalletDebug />*/}
                          
