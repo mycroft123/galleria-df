@@ -164,6 +164,18 @@ const NavigationContent = ({
             console.log('💤 Balance unchanged, skipping update');
           }
           
+        } else if (event.data?.type === 'defacts-auth-status') {
+          console.log('🔐 Auth status received:', event.data);
+          
+          if (!event.data.authenticated && event.data.onLoginPage) {
+            console.log('👤 User needs to log in to LibreChat');
+            // Stop requesting balance while user is logging in
+            if (requestIntervalRef.current) {
+              clearInterval(requestIntervalRef.current);
+              requestIntervalRef.current = null;
+            }
+          }
+          
         } else if (event.data?.type === 'defacts-token-balance-error') {
           console.log('❌ Balance Error Received:', event.data.error);
           
