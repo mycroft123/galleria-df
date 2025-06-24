@@ -97,22 +97,15 @@ const NavigationContent = ({
       
       // Handle incoming balance messages
       const handleMessage = (event: MessageEvent) => {
-        // Skip if from same origin (not cross-frame)
-        if (event.origin === window.location.origin) {
+        // Only accept messages from LibreChat
+        const LIBRECHAT_ORIGIN = 'https://defacts-production-e393.up.railway.app';
+        
+        if (event.origin !== LIBRECHAT_ORIGIN) {
+          console.log('🚫 Ignoring message from unknown origin:', event.origin);
           return;
         }
         
-        // Security: Check allowed origins
-        const allowedOrigins = [
-          'http://localhost:3000',
-          'http://localhost:3001',
-          'http://localhost:5173',
-          'https://defacts-production-e393.up.railway.app'
-        ];
-        
-        if (!allowedOrigins.includes(event.origin)) {
-          return;
-        }
+        console.log('✅ Message from LibreChat:', event.data);
         
         // Handle different message types
         if (event.data?.type === 'defacts-token-balance') {
@@ -223,9 +216,11 @@ const NavigationContent = ({
             requestsSentRef.current += 1;
             console.log(`📤 Sending balance request #${requestsSentRef.current}`);
             
+            // Use specific LibreChat origin
+            const LIBRECHAT_ORIGIN = 'https://defacts-production-e393.up.railway.app';
             iframe.contentWindow.postMessage(
               { type: 'request-token-balance' },
-              '*'
+              LIBRECHAT_ORIGIN
             );
             
             setDebugInfo(prev => ({
