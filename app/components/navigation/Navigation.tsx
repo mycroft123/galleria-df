@@ -57,7 +57,19 @@ const NavigationContent = ({
     // IMPORTANT STATE: Track if full navigation should be shown
     const [showFullNavigation, setShowFullNavigation] = useState(false);
     
-    // Debug component state
+    // Track if we have a confirmed DeFacts balance and the detected value
+    const [hasDeFacts, setHasDeFacts] = useState(false);
+    const [detectedBalance, setDetectedBalance] = useState("");
+    
+    // Use refs to prevent unnecessary re-renders
+    const lastReceivedBalance = useRef<number | null>(null);
+    const checkCountRef = useRef(0);
+    const requestsSentRef = useRef(0);
+    const requestIntervalRef = useRef<NodeJS.Timeout | null>(null);
+    const hasAuthErrorRef = useRef(false);
+    const lastRequestTimeRef = useRef(0);
+    
+    // Debug state - separate from main state to prevent re-renders
     const [debugInfo, setDebugInfo] = useState({
       showFullNav: false,
       hasWalletBalance: false,
@@ -77,122 +89,94 @@ const NavigationContent = ({
       lastErrorTime: null as string | null
     });
     
-    // Track if we have a confirmed DeFacts balance and the detected value
-    const [hasDeFacts, setHasDeFacts] = useState(false);
-    const [detectedBalance, setDetectedBalance] = useState("");
-    const checkCountRef = useRef(0);
-    const requestsSentRef = useRef(0);
-    const allMessagesRef = useRef(0);
-    const requestIntervalRef = useRef<NodeJS.Timeout | null>(null);
-    const hasAuthErrorRef = useRef(false);
-    
     // PostMessage implementation for cross-domain communication
     useEffect(() => {
       if (typeof window === 'undefined') return;
       
       console.log('🚀 Navigation PostMessage Setup Starting...');
       
-      const LIBRECHAT_ORIGIN = 'https://defacts-production-e393.up.railway.app';
-      console.log('📍 Expected LibreChat Origin:', LIBRECHAT_ORIGIN);
-
       // Handle incoming balance messages
       const handleMessage = (event: MessageEvent) => {
-        // Log ALL messages first
-        allMessagesRef.current += 1;
-        console.log('🌐 ALL MESSAGES - Message #' + allMessagesRef.current + ':', {
-          origin: event.origin,
-          data: event.data,
-          source: event.source,
-          timestamp: new Date().toLocaleTimeString()
-        });
-        
-        // Update debug info for all messages
-        setDebugInfo(prev => ({
-          ...prev,
-          allMessagesCount: allMessagesRef.current
-        }));
-        
         // Skip if from same origin (not cross-frame)
         if (event.origin === window.location.origin) {
-          console.log('⏭️ Skipping same-origin message');
           return;
         }
-        
-        console.log('📨 Cross-origin message received from:', event.origin);
-        console.log('📦 Message data:', event.data);
-        
-        // Update debug with last message info
-        setDebugInfo(prev => ({
-          ...prev,
-          lastOrigin: event.origin,
-          lastMessageReceived: event.data,
-          messageHistory: [...prev.messageHistory.slice(-4), `${new Date().toLocaleTimeString()}: ${event.origin} - ${JSON.stringify(event.data).substring(0, 50)}...`]
-        }));
         
         // Security: Check allowed origins
         const allowedOrigins = [
           'http://localhost:3000',
           'http://localhost:3001',
-          'http://localhost:5173', // Vite dev server
-          'https://defacts-production-e393.up.railway.app' // Your LibreChat domain
+          'http://localhost:5173',
+          'https://defacts-production-e393.up.railway.app'
         ];
         
-        console.log('🔒 Checking against allowed origins:', allowedOrigins);
-        const isAllowedOrigin = allowedOrigins.some(origin => event.origin === origin);
-        
-        if (!isAllowedOrigin) {
-          console.warn('❌ Rejected message from unauthorized origin:', event.origin);
-          console.warn('   Expected one of:', allowedOrigins);
+        if (!allowedOrigins.includes(event.origin)) {
           return;
         }
-        
-        console.log('✅ Origin authorized');
         
         // Handle different message types
         if (event.data?.type === 'defacts-token-balance') {
           const balance = event.data.balance;
-          const hasBalance = typeof balance === 'number' && balance > 0;
+          const numericBalance = Number(balance);
           
-          console.log('💰 Balance Update Received!');
-          console.log('   Raw balance:', balance);
-          console.log('   Has balance:', hasBalance);
-          console.log('   Type of balance:', typeof balance);
-          console.log('   Message source:', event.data.source);
-          
-          // Update check count
-          checkCountRef.current += 1;
-          
-          // Update state
-          setHasDeFacts(hasBalance);
-          setDetectedBalance(balance?.toString() || '0');
-          setShowFullNavigation(hasBalance);
-          
-          // Clear auth error state
-          hasAuthErrorRef.current = false;
-          
-          console.log('🔄 State Updated:');
-          console.log('   showFullNavigation:', hasBalance);
-          console.log('   detectedBalance:', balance?.toString() || '0');
-          
-          // Update debug info
-          setDebugInfo(prev => ({
-            ...prev,
-            showFullNav: hasBalance,
-            hasWalletBalance: hasBalance,
-            foundBalance: balance?.toString() || '0',
-            navigationItems: hasBalance ? FULL_NAV.map(item => item.name) : CHAT_ONLY_NAV.map(item => item.name),
-            checkCount: checkCountRef.current,
-            currentView: prev.currentView,
-            authError: false
-          }));
+          // IMPORTANT: Only update if balance actually changed
+          if (lastReceivedBalance.current !== numericBalance) {
+            console.log('💰 Balance changed from', lastReceivedBalance.current, 'to', numericBalance);
+            
+            lastReceivedBalance.current = numericBalance;
+            checkCountRef.current += 1;
+            
+            const hasBalance = numericBalance > 0;
+            
+            // Update state only if values actually changed
+            setHasDeFacts(prev => {
+              if (prev !== hasBalance) {
+                console.log('🔄 Updating hasDeFacts:', hasBalance);
+                return hasBalance;
+              }
+              return prev;
+            });
+            
+            setDetectedBalance(prev => {
+              const newValue = numericBalance.toString();
+              if (prev !== newValue) {
+                console.log('🔄 Updating detectedBalance:', newValue);
+                return newValue;
+              }
+              return prev;
+            });
+            
+            setShowFullNavigation(prev => {
+              if (prev !== hasBalance) {
+                console.log('🔄 Updating showFullNavigation:', hasBalance);
+                return hasBalance;
+              }
+              return prev;
+            });
+            
+            // Clear auth error state
+            hasAuthErrorRef.current = false;
+            
+            // Update debug info separately to avoid main component re-renders
+            setDebugInfo(prev => ({
+              ...prev,
+              showFullNav: hasBalance,
+              hasWalletBalance: hasBalance,
+              foundBalance: numericBalance.toString(),
+              navigationItems: hasBalance ? FULL_NAV.map(item => item.name) : CHAT_ONLY_NAV.map(item => item.name),
+              checkCount: checkCountRef.current,
+              authError: false
+            }));
+          } else {
+            console.log('💤 Balance unchanged, skipping update');
+          }
           
         } else if (event.data?.type === 'defacts-token-balance-error') {
           console.log('❌ Balance Error Received:', event.data.error);
-          console.log('   Status:', event.data.status);
           
           hasAuthErrorRef.current = true;
           
-          // Update debug info
+          // Update debug info only
           setDebugInfo(prev => ({
             ...prev,
             errorCount: prev.errorCount + 1,
@@ -208,42 +192,40 @@ const NavigationContent = ({
           }
           
         } else if (event.data?.type === 'defacts-token-balance-loading') {
-          console.log('⏳ Balance Loading Status Received');
-          
-          // Update debug info
+          // Update debug info only
           setDebugInfo(prev => ({
             ...prev,
             loadingCount: prev.loadingCount + 1
           }));
-          
-        } else {
-          console.log('🤔 Message type not recognized:', event.data?.type);
         }
       };
       
       // Add message listener
-      console.log('👂 Adding message event listener...');
       window.addEventListener('message', handleMessage);
       
       // Function to request balance from iframe
       const requestBalance = () => {
-        // Skip if we have an auth error
+        // Skip if we have an auth error or if we requested recently
         if (hasAuthErrorRef.current) {
-          console.log('🚫 Skipping balance request due to auth error');
           return;
         }
+        
+        const now = Date.now();
+        if (now - lastRequestTimeRef.current < 10000) { // 10 second minimum between requests
+          return;
+        }
+        lastRequestTimeRef.current = now;
         
         const iframe = document.querySelector('iframe') as HTMLIFrameElement;
         
         if (iframe?.contentWindow) {
           try {
             requestsSentRef.current += 1;
-            console.log(`📤 Sending balance request #${requestsSentRef.current} to iframe...`);
-            console.log('   iframe src:', iframe.src);
+            console.log(`📤 Sending balance request #${requestsSentRef.current}`);
             
             iframe.contentWindow.postMessage(
               { type: 'request-token-balance' },
-              '*' // We use * here because the iframe will verify the origin
+              '*'
             );
             
             setDebugInfo(prev => ({
@@ -254,81 +236,52 @@ const NavigationContent = ({
           } catch (e) {
             console.error('❌ Error requesting balance:', e);
           }
-        } else {
-          console.log('⚠️ iframe not found or contentWindow not available');
-          setDebugInfo(prev => ({
-            ...prev,
-            iframeFound: false
-          }));
         }
       };
       
-      // Request balance periodically with backoff
-      console.log('⏰ Setting up periodic balance requests...');
-      requestIntervalRef.current = setInterval(requestBalance, 5000); // Increased to 5 seconds
+      // Request balance less frequently
+      requestIntervalRef.current = setInterval(requestBalance, 15000); // Increased to 15 seconds
       
-      // Initial requests after iframe likely loaded
-      console.log('🎯 Scheduling initial balance requests...');
-      setTimeout(() => {
-        console.log('⏱️ Initial request 1 (after 2s)');
-        requestBalance();
-      }, 2000);
-      
-      setTimeout(() => {
-        console.log('⏱️ Initial request 2 (after 4s)');
-        requestBalance();
-      }, 4000);
-      
-      // Removed iframe load listener - it was causing endless reloading
-      // The periodic interval and initial timeouts are sufficient
+      // Initial request after iframe likely loaded
+      setTimeout(requestBalance, 3000);
       
       // Cleanup
       return () => {
-        console.log('🧹 Cleaning up Navigation PostMessage listeners...');
         window.removeEventListener('message', handleMessage);
         if (requestIntervalRef.current) {
           clearInterval(requestIntervalRef.current);
         }
       };
-    }, []);
+    }, []); // Empty deps array - setup only once
     
     // Handle redirection if navigation is restricted
     useEffect(() => {
       if (!showFullNavigation && currentView !== 'chat') {
         console.log("🚫 Redirecting to chat view - navigation restricted");
-        console.log("   showFullNavigation:", showFullNavigation);
-        console.log("   currentView:", currentView);
         router.push(`/portfolio/${params.walletAddress}?view=chat`);
       }
     }, [showFullNavigation, currentView, router, params.walletAddress]);
     
     // Update debug info when currentView changes
     useEffect(() => {
-      console.log("👁️ Current view changed to:", currentView);
       setDebugInfo(prev => ({ ...prev, currentView }));
     }, [currentView]);
     
-    // SIMPLIFIED: Choose navigation based solely on our fullNavigation state
+    // Choose navigation based on our state
     const navItems = showFullNavigation ? FULL_NAV : CHAT_ONLY_NAV;
     
-    // We'll pass down the onClick handler separately to keep the structure clean
+    // Navigation click handler
     const handleNavigationClick = (href: string) => {
-      console.log(`🖱️ Navigation clicked: ${href}`);
-      
-      // If trying to navigate away from chat while navigation is restricted
       if (href !== 'chat' && !showFullNavigation) {
-        console.log("⛔ Attempt to navigate to restricted area, redirecting to chat");
         router.push(`/portfolio/${params.walletAddress}?view=chat`);
       } else {
-        // Normal navigation
-        console.log(`✅ Changing view to: ${href}`);
         changeView(href, params.walletAddress);
       }
     };
     
     return (
       <>
-        {/* Enhanced Debug overlay - Always visible for debugging */}
+        {/* Debug overlay - Consider making this conditional for production */}
         <div 
           style={{
             position: 'fixed',
@@ -357,40 +310,13 @@ const NavigationContent = ({
               {debugInfo.hasWalletBalance ? 'YES' : 'NO'}
             </span></div>
             <div>🔢 Balance Value: <span style={{ color: '#60a5fa' }}>{debugInfo.foundBalance || 'none'}</span></div>
-            <div>📨 Balance Messages: <span style={{ color: '#a78bfa' }}>{debugInfo.checkCount}</span></div>
-            <div>❌ Error Messages: <span style={{ color: debugInfo.errorCount > 0 ? '#f87171' : '#4ade80' }}>{debugInfo.errorCount}</span></div>
-            <div>⏳ Loading Messages: <span style={{ color: '#facc15' }}>{debugInfo.loadingCount}</span></div>
+            <div>📨 Balance Updates: <span style={{ color: '#a78bfa' }}>{debugInfo.checkCount}</span></div>
+            <div>❌ Errors: <span style={{ color: debugInfo.errorCount > 0 ? '#f87171' : '#4ade80' }}>{debugInfo.errorCount}</span></div>
             <div>🔐 Auth Error: <span style={{ color: debugInfo.authError ? '#f87171' : '#4ade80' }}>
               {debugInfo.authError ? 'YES' : 'NO'}
             </span></div>
-            {debugInfo.lastErrorTime && (
-              <div>⏰ Last Error: <span style={{ color: '#f87171' }}>{debugInfo.lastErrorTime}</span></div>
-            )}
-            <div>🌐 All Messages: <span style={{ color: '#facc15' }}>{debugInfo.allMessagesCount}</span></div>
             <div>📤 Requests Sent: <span style={{ color: '#facc15' }}>{debugInfo.requestsSent}</span></div>
-            <div>🖼️ iframe Found: <span style={{ color: debugInfo.iframeFound ? '#4ade80' : '#f87171' }}>
-              {debugInfo.iframeFound ? 'YES' : 'NO'}
-            </span></div>
             <div>📱 Current View: <span style={{ color: '#60a5fa' }}>{currentView}</span></div>
-            <div>🗂️ Menu Items: <span style={{ color: '#a78bfa' }}>{debugInfo.navigationItems.join(', ')}</span></div>
-            
-            {debugInfo.lastOrigin && (
-              <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
-                <div>🌐 Last Origin: <span style={{ color: '#facc15', fontSize: '10px' }}>{debugInfo.lastOrigin}</span></div>
-                <div>📦 Last Message: <span style={{ color: '#60a5fa', fontSize: '10px' }}>
-                  {JSON.stringify(debugInfo.lastMessageReceived, null, 2).substring(0, 100)}...
-                </span></div>
-              </div>
-            )}
-            
-            {debugInfo.messageHistory.length > 0 && (
-              <div style={{ marginTop: '5px', paddingTop: '5px', borderTop: '1px solid rgba(255,255,255,0.2)' }}>
-                <div style={{ fontWeight: 'bold', marginBottom: '3px' }}>📜 Recent Messages:</div>
-                {debugInfo.messageHistory.map((msg, i) => (
-                  <div key={i} style={{ fontSize: '9px', color: '#94a3b8' }}>{msg}</div>
-                ))}
-              </div>
-            )}
           </div>
         </div>
       
