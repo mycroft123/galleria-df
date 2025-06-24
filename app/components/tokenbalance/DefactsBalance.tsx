@@ -1,18 +1,28 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 
-const DefactsBalance = () => {
+interface DefactsBalanceProps {
+  balance?: string;
+  hasBalance?: boolean;
+}
+
+const DefactsBalance = ({ balance, hasBalance }: DefactsBalanceProps) => {
   // State to store the token balance received from the iframe
-  const [tokenBalance, setTokenBalance] = useState('0.0000');
+  const [tokenBalance, setTokenBalance] = useState('0');
   const [userEmail, setUserEmail] = useState('');
   const [isLoaded, setIsLoaded] = useState(false);
-
-  // Listen for messages from the iframe
+  
+  // Use the balance prop if provided
+  useEffect(() => {
+    if (balance !== undefined) {
+      setTokenBalance(balance);
+      setIsLoaded(true);
+    }
+  }, [balance]);
+  
+  // Also listen for messages from the iframe (backwards compatibility)
   useEffect(() => {
     const handleMessage = (event: MessageEvent) => {
-      // Optional: Check the origin for security
-      // if (event.origin !== "https://your-librechat-domain.com") return;
-      
       // Check if we have the right message type
       if (event.data && event.data.type === 'DEFACTS_USER_INFO') {
         console.log('Received user info from iframe:', event.data);
@@ -21,18 +31,21 @@ const DefactsBalance = () => {
         setIsLoaded(true);
       }
     };
-
+    
     // Add the event listener
     window.addEventListener('message', handleMessage);
-
+    
     // Clean up the event listener when component unmounts
     return () => {
       window.removeEventListener('message', handleMessage);
     };
   }, []);
-
-  // If no data received yet, show loading state
-  if (!isLoaded) {
+  
+  // Format balance with proper decimals
+  const formattedBalance = parseFloat(tokenBalance || '0').toFixed(4);
+  
+  // If no balance and not loaded, show loading state
+  if (!isLoaded && !balance) {
     return (
       <div className="flex items-center">
         <div className="rounded-full bg-gray-700 px-3 py-1.5 text-sm">
@@ -43,21 +56,21 @@ const DefactsBalance = () => {
       </div>
     );
   }
-
+  
   return (
     <div className="flex items-center">
-      <div className="rounded-full bg-green-100 bg-opacity-20 px-3 py-1.5 text-sm shadow-sm">
-        <span className="font-semibold text-green-400">
-          {tokenBalance} <span className="ml-1 font-normal">DF</span>
+      <div className={`rounded-full ${hasBalance ? 'bg-green-100 bg-opacity-20' : 'bg-gray-700'} px-3 py-1.5 text-sm shadow-sm`}>
+        <span className={`font-semibold ${hasBalance ? 'text-green-400' : 'text-gray-300'}`}>
+          {formattedBalance} <span className="ml-1 font-normal">DF</span>
         </span>
       </div>
       
       {/* Optionally show email or user info - can be hidden if not needed */}
-      {/* 
-      <div className="ml-2 text-xs text-gray-400">
-        {userEmail}
-      </div>
-      */}
+      {userEmail && (
+        <div className="ml-2 text-xs text-gray-400">
+          {userEmail}
+        </div>
+      )}
     </div>
   );
 };
