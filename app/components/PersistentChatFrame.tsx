@@ -94,7 +94,10 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
         src="https://defacts-production-e393.up.railway.app/c/new" 
         className="defacts-iframe"
         title="DeFacts"
-        allow="microphone; camera; geolocation"
+        // UPDATED: Added autoplay to the allow attribute
+        allow="autoplay; microphone; camera; geolocation; fullscreen"
+        // OPTIONAL: You might also want to add allowFullScreen attribute
+        allowFullScreen
         sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
         style={{
           width: '100%',
