@@ -89,30 +89,34 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
         outline: 'none',
       }}
     >
-      <iframe 
-        ref={iframeRef}
-        src="https://defacts-production-e393.up.railway.app/c/new" 
-        className="defacts-iframe"
-        title="DeFacts"
-        // UPDATED: Added autoplay to the allow attribute
-        allow="autoplay; microphone; camera; geolocation; fullscreen"
-        // OPTIONAL: You might also want to add allowFullScreen attribute
-        allowFullScreen
-        sandbox="allow-same-origin allow-scripts allow-forms allow-popups"
-        style={{
-          width: '100%',
-          height: '100%',
-          border: 'none',
-          display: 'block',
-          position: 'absolute',
-          top: '0',
-          left: '0',
-          transform: 'translate3d(0,0,0)',
-          willChange: 'transform',
-          overscrollBehavior: 'contain',
-          WebkitTransform: 'translateZ(0)',
-        }}
-      />
+<iframe 
+  ref={iframeRef}
+  src="https://defacts-production-e393.up.railway.app/c/new" 
+  className="defacts-iframe"
+  title="DeFacts"
+  allow="autoplay; microphone; camera; geolocation; fullscreen"
+  allowFullScreen
+  // Remove or update the sandbox attribute
+  // Either remove it completely:
+  // (no sandbox attribute)
+  
+  // OR make it more permissive:
+  sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-storage-access-by-user-activation"
+  
+  style={{
+    width: '100%',
+    height: '100%',
+    border: 'none',
+    display: 'block',
+    position: 'absolute',
+    top: '0',
+    left: '0',
+    transform: 'translate3d(0,0,0)',
+    willChange: 'transform',
+    overscrollBehavior: 'contain',
+    WebkitTransform: 'translateZ(0)',
+  }}
+/>
       
       {/* Add CSS for mobile-specific fixes */}
       <style jsx>{`
