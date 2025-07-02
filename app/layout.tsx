@@ -13,6 +13,11 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "DeFacts",
   description: "A portfolio viewer from DeFacts Labs",
+  icons: {
+    icon: '/icon.png',
+    shortcut: '/favicon.ico',
+    apple: '/icon.png',
+  },
 };
 
 const RootLayout = ({ children }: { children: React.ReactNode }) => {
