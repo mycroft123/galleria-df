@@ -56,7 +56,7 @@ const TokenDashboard: React.FC<TokenDashboardProps> = ({ walletAddress }) => {
   return (
     <div className="w-full space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Token & NFT Dashboard</h1>
+        <h1 className="text-2xl font-bold">Token & NFT Dashboard (balances are for DEMO ONLY)</h1>
         <div className="text-sm text-gray-400">
           Wallet: {walletAddress.slice(0, 6)}...{walletAddress.slice(-4)}
         </div>
