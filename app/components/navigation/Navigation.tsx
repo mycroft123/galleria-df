@@ -8,7 +8,7 @@ import MobileNavigation from "./MobileNavigation";
 import SidebarNavigation from "./SidebarNavigation";
 import { usePersistentView } from "../../hooks/usePersistentView";
 import { WalletProvider, useWallet } from '@/app/providers/WalletProvider';
-import { MessageSquare, ScatterChart } from "lucide-react";
+import { HelpCircleIcon, MessageSquare, ScatterChart } from "lucide-react";
 
 interface NavigationProps {
   searchParams: {
@@ -36,7 +36,8 @@ const FULL_NAV = [
   { name: "Mining", href: "nfts", icon: PhotoIcon },
   { name: "Portfolio", href: "portfolio", icon: ChartBarIcon },
   { name: "Tokens", href: "tokens", icon: StopCircleIcon },
-  { name: "URL Input", href: "url", icon: LinkIcon }
+  { name: "URL Input", href: "url", icon: LinkIcon },
+  { name: "Help Input", href: "help", icon: HelpCircleIcon }
 ];
 
 // This is the inner component that uses the wallet hook
