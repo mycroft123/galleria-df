@@ -15,8 +15,6 @@ const RedirectHandler = () => {
       if (isConnected && publicKey) {
         // User is logged in - redirect to their portfolio
         router.push(`/portfolio/${publicKey}?view=portfolio`);
-        console.log('Test log');
-        
       } else {
         // User is not logged in - redirect to default portfolio
         router.push('/portfolio/ExK2ZcWx6tpVe5xfqkHZ62bMQNpStLj98z2WDUWKUKGp?view=chat');
