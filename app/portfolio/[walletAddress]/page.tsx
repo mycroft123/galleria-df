@@ -20,6 +20,7 @@ import PortfolioView from "@/app/components/tokenbalance/PortfolioView";
 import PersistentChatFrame from "@/app/components/PersistentChatFrame"; // Import the new component
 
 import { FungibleToken, NonFungibleToken } from "@/app/types";
+import HelpPage from "@/app/components/help/HelpPage";
 
 interface GroupedNFTs {
   name: string;
@@ -192,6 +193,12 @@ const PortfolioPage = async ({ params, searchParams }: PageProps) => {
                         walletAddress={walletAddress}
                       />
                     </>
+                  )}
+
+                  {view === "help" && (
+                    <div className="flex justify-center items-center">
+                      <HelpPage key={`help-${walletAddress}`} />
+                    </div>
                   )}
                 </div>
               </Suspense>
