@@ -153,7 +153,7 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
 
       <iframe 
         ref={iframeRef}
-        src={isActive ? "https://defacts-production-e393.up.railway.app/c/new" : "about:blank"}
+        src={isActive ? "https://chat.defacts.ai/c/new" : "about:blank"}
         className="defacts-iframe"
         title="DeFacts"
         allow="autoplay; microphone; camera; geolocation; fullscreen; clipboard-read; clipboard-write"
