@@ -99,7 +99,7 @@ const NavigationContent = ({
       // Handle incoming balance messages
       const handleMessage = (event: MessageEvent) => {
         // Only accept messages from LibreChat
-        const LIBRECHAT_ORIGIN = 'https://defacts-production-e393.up.railway.app';
+        const LIBRECHAT_ORIGIN = 'https://chat.defacts.ai';
         
         if (event.origin !== LIBRECHAT_ORIGIN) {
           console.log('🚫 Ignoring message from unknown origin:', event.origin);
@@ -230,7 +230,7 @@ const NavigationContent = ({
             console.log(`📤 Sending balance request #${requestsSentRef.current}`);
             
             // Use specific LibreChat origin
-            const LIBRECHAT_ORIGIN = 'https://defacts-production-e393.up.railway.app';
+            const LIBRECHAT_ORIGIN = 'https://chat.defacts.ai';
             iframe.contentWindow.postMessage(
               { type: 'request-token-balance' },
               LIBRECHAT_ORIGIN
