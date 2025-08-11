@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { ChevronDown, ChevronUp } from "lucide-react";
 import { usePersistentView } from '@/app/hooks/usePersistentView';
+import Spinner from './Spinner'
 
 // Updated API URL to use Railway deployment
 const API_BASE_URL = "https://df-backend-13-production.up.railway.app";
@@ -123,9 +124,7 @@ const URLInput = () => {
   };
 
   if (!isInitialized) {
-    return <div className="w-full h-full flex items-center justify-center">
-      <div className="h-32 w-32 animate-spin rounded-full border-b-2 border-t-2 border-white"></div>
-    </div>;
+    <Spinner />
   }
 
   return (

@@ -9,6 +9,7 @@ import SidebarNavigation from "./SidebarNavigation";
 import { usePersistentView } from "../../hooks/usePersistentView";
 import { WalletProvider, useWallet } from '@/app/providers/WalletProvider';
 import { HelpCircleIcon, MessageSquare, ScatterChart } from "lucide-react";
+import Spinner from "../Spinner";
 
 interface NavigationProps {
   searchParams: {
@@ -89,6 +90,11 @@ const NavigationContent = ({
       authError: false,
       lastErrorTime: null as string | null
     });
+
+    // To check whether the balance is received or not from the iframe
+    const [isBalanceChecked, setIsBalanceChecked] = useState<boolean>(false);
+    
+    const [isUserAuthenticated, setIsUserAuthenticated] = useState<boolean>(true);
     
     // PostMessage implementation for cross-domain communication
     useEffect(() => {
@@ -165,9 +171,13 @@ const NavigationContent = ({
             console.log('💤 Balance unchanged, skipping update');
           }
           
+          setIsBalanceChecked(true)
         } else if (event.data?.type === 'defacts-auth-status') {
           console.log('🔐 Auth status received:', event.data);
           
+          if(!event.data.isAuthenticated){
+            setIsUserAuthenticated(false)
+          }
           if (!event.data.authenticated && event.data.onLoginPage) {
             console.log('👤 User needs to log in to LibreChat');
             // Stop requesting balance while user is logging in
@@ -287,6 +297,12 @@ const NavigationContent = ({
       }
     };
     
+    if (!isBalanceChecked && isUserAuthenticated) {
+      return (
+        <Spinner />
+      );
+    }
+
     return (
       <>
         {/* Debug overlay - Consider making this conditional for production

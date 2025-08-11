@@ -11,7 +11,8 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
   const containerRef = useRef<HTMLDivElement>(null);
   const [iframeError, setIframeError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  
+  const librachatUrl = 'http://app.defacts.local:3080/c/new';
+
   // Log visibility changes for debugging
   useEffect(() => {
     console.log(`Chat iframe visibility changed: ${isActive ? 'visible' : 'hidden'}`);
@@ -48,12 +49,12 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
     const adjustIframePosition = () => {
       const iframe = iframeRef.current;
       const container = containerRef.current;
-      
+
       if (iframe && container && isActive) {
         // Update container position based on current sidebar width
         const sidebarWidth = getSidebarWidth();
         container.style.left = sidebarWidth;
-        
+
         // Force iframe to recalculate position on mobile
         iframe.style.height = '99%';
         setTimeout(() => {
@@ -74,12 +75,12 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
     // Add event listeners
     window.addEventListener('orientationchange', handleOrientationChange);
     window.addEventListener('resize', handleResize);
-    
+
     // Initial adjustment when component becomes active
     if (isActive) {
       setTimeout(adjustIframePosition, 100);
     }
-    
+
     return () => {
       window.removeEventListener('orientationchange', handleOrientationChange);
       window.removeEventListener('resize', handleResize);
@@ -89,7 +90,7 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
   // Calculate proper sidebar width based on your actual sidebar
   const getSidebarWidth = () => {
     if (typeof window === 'undefined') return '0';
-    
+
     // Your sidebar is lg:w-20 (80px) and only visible on lg+ screens
     if (window.innerWidth >= 1024) {
       return '80px'; // This matches your lg:w-20 class
@@ -107,10 +108,10 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
   };
 
   return (
-    <div 
+    <div
       ref={containerRef}
       className={`librechat-iframe-container ${isActive ? 'block' : 'hidden'}`}
-      style={{ 
+      style={{
         position: 'fixed',
         top: '64px', // Account for your header height
         left: getSidebarWidth(), // Use proper sidebar width
@@ -141,7 +142,7 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
         <div className="absolute inset-0 flex items-center justify-center bg-white dark:bg-gray-900">
           <div className="text-center">
             <p className="text-red-600 dark:text-red-400 mb-4">Failed to load DeFacts</p>
-            <button 
+            <button
               onClick={handleRetry}
               className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
             >
@@ -151,9 +152,9 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
         </div>
       )}
 
-      <iframe 
+      <iframe
         ref={iframeRef}
-        src={isActive ? "https://chat.defacts.ai/c/new" : "about:blank"}
+        src={librachatUrl}
         className="defacts-iframe"
         title="DeFacts"
         allow="autoplay; microphone; camera; geolocation; fullscreen; clipboard-read; clipboard-write"
@@ -161,7 +162,7 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
         // Remove sandbox attribute completely to allow full functionality
         // If you must use sandbox, use the most permissive settings:
         // sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-popups-to-escape-sandbox allow-modals allow-storage-access-by-user-activation allow-downloads allow-presentation allow-top-navigation allow-top-navigation-by-user-activation"
-        
+
         style={{
           width: '100%',
           height: '100%',
@@ -176,7 +177,7 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
           WebkitTransform: 'translateZ(0)',
         }}
       />
-      
+
       {/* Add CSS for mobile-specific fixes */}
       <style jsx>{`
         @media screen and (max-width: 1024px) {
