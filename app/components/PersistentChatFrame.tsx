@@ -11,7 +11,7 @@ const PersistentChatFrame: React.FC<PersistentChatFrameProps> = ({ isActive }) =
   const containerRef = useRef<HTMLDivElement>(null);
   const [iframeError, setIframeError] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
-  const librachatUrl = 'http://app.defacts.local:3080/c/new';
+  const librachatUrl = 'https://chat.defacts.ai/c/new';
 
   // Log visibility changes for debugging
   useEffect(() => {
