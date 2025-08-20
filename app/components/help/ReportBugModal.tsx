@@ -42,19 +42,58 @@ export default function ReportBugModal({ isModalOpen, setIsModalOpen }: any) {
     mode: 'onSubmit',
   })
 
-  const onSubmit = (data: BugReportForm) => {
-    console.log('Form submitted:', data, screenshots)
-    setIsModalOpen(false)
-    toast.success('Bug report submitted successfully!', {
-      position: "top-right",
-      autoClose: 5000,
-      hideProgressBar: false,
-      closeOnClick: false,
-      pauseOnHover: true,
-      draggable: true,
-      progress: undefined,
-      theme: "colored"
-    });
+  const onSubmit = async (data: BugReportForm) => {
+    try {
+      const formData = new FormData();
+      formData.append('bugDescription', data.bugDescription);
+      screenshots.forEach((screenshot) => {
+        formData.append('screenshots', screenshot);
+      });
+
+      const response = await fetch('/api/bug-report', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const result = await response.json();
+
+      if (response.ok) {
+        setIsModalOpen(false);
+        toast.success('Bug report submitted successfully!', {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: false,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "colored"
+        });
+      } else {
+        toast.error(result.error || 'Failed to submit bug report', {
+          position: "top-right",
+          autoClose: 5000,
+          hideProgressBar: false,
+          closeOnClick: false,
+          pauseOnHover: true,
+          draggable: true,
+          progress: undefined,
+          theme: "colored"
+        });
+      }
+    } catch (error) {
+      console.error('Error submitting bug report:', error);
+      toast.error('Failed to submit bug report. Please try again.', {
+        position: "top-right",
+        autoClose: 5000,
+        hideProgressBar: false,
+        closeOnClick: false,
+        pauseOnHover: true,
+        draggable: true,
+        progress: undefined,
+        theme: "colored"
+      });
+    }
   }
 
   const handleScreenshotChange = (files: File[]) => {
