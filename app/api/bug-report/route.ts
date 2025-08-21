@@ -10,20 +10,19 @@ interface JwtPayload {
   exp: Long;
 }
 
-// 1️⃣ Define TypeScript interfaces
-interface IScreenshot {
+export interface IScreenshot {
   filename: string;
   contentType: string;
   size: number;
   data: Buffer;
 }
 
-interface IBugReport {
+export interface IBugReport {
   bugId: string;
   userId: string;
-  bugDescription: string;
+  description: string;
   attachments: IScreenshot[];
-  submittedAt: Date;
+  deleteStatus: boolean;
 }
 
 export interface IUser {
@@ -64,7 +63,6 @@ export interface IUser {
   updatedAt?: Date;
 }
 
-// 2️⃣ Create Mongoose Schemas with those interfaces
 const AttachmentsSchema = new Schema<IScreenshot>({
   filename: String,
   contentType: String,
@@ -72,13 +70,13 @@ const AttachmentsSchema = new Schema<IScreenshot>({
   data: Buffer,
 });
 
-const BugReportSchema = new Schema<IBugReport>({
+export const BugReportSchema = new Schema<IBugReport>({
   bugId: { type: String, required: true, unique: true },
   userId: { type: String, required: true },
-  bugDescription: { type: String, required: true },
+  description: { type: String, required: true },
   attachments: [AttachmentsSchema],
-  submittedAt: { type: Date, required: true, default: () => new Date() },
-});
+  deleteStatus: { type: Boolean, default: false },
+}, { timestamps: true });
 
 // 3️⃣ Define Mongoose Models with correct generics
 let BugReport: mongoose.Model<IBugReport>;
@@ -132,7 +130,6 @@ async function generateBugId(): Promise<string> {
   return `${prefix}${sequenceNumber}`;
 }
 
-// 6️⃣ Token extraction helper
 function getUserIdFromRefreshToken(request: NextRequest): string | false {
   const refresh = request.cookies.get('refreshToken');
   if (!refresh?.value) return false;
@@ -140,7 +137,6 @@ function getUserIdFromRefreshToken(request: NextRequest): string | false {
   return decoded.id;
 }
 
-// GET user info helper
 async function getUserDetailsByUserId(userId: string): Promise<any> {
   return User.findById(userId).lean();
 }
@@ -156,13 +152,13 @@ export async function POST(request: NextRequest) {
     }
 
     const formData = await request.formData();
-    const bugDescription = formData.get('bugDescription') as string;
+    const description = formData.get('bugDescription') as string;
     const screenshots = formData.getAll('screenshots') as File[];
 
-    if (!bugDescription || bugDescription.trim().length < 50) {
+    if (!description || description.trim().length < 50) {
       return NextResponse.json({ error: 'Bug description must be at least 50 characters' }, { status: 400 });
     }
-    if (bugDescription.trim().length > 1000) {
+    if (description.trim().length > 1000) {
       return NextResponse.json({ error: 'Bug description must be under 1000 characters' }, { status: 400 });
     }
 
@@ -187,9 +183,8 @@ export async function POST(request: NextRequest) {
     const newBug = new BugReport({
       bugId,
       userId,
-      bugDescription: bugDescription.trim(),
+      description: description.trim(),
       attachments: processedScreenshots,
-      submittedAt: new Date(),
     });
 
     const saved = await newBug.save();
@@ -230,16 +225,16 @@ export async function GET(request: NextRequest) {
 
     const skip = (page - 1) * limit;
     const bugId = searchParams.get('bugId');
-    const bugDescription = searchParams.get('bugDescription');
+    const description = searchParams.get('description');
     const name = searchParams.get('name');
     const email = searchParams.get('email');
 
-    const bugReportFilter: any = {};
+    const bugReportFilter: any = {deleteStatus: false};
     if (bugId) {
       bugReportFilter.bugId = { $regex: bugId, $options: 'i' };
     }
-    if (bugDescription) {
-      bugReportFilter.bugDescription = { $regex: bugDescription, $options: 'i' };
+    if (description) {
+      bugReportFilter.description = { $regex: description, $options: 'i' };
     }
 
     if (name || email) {
@@ -250,7 +245,6 @@ export async function GET(request: NextRequest) {
       const matchingUsers = await User.find(userFilter).select('_id').lean();
       const matchingUserIds = matchingUsers.map((u) => u._id.toString());
 
-      // ⛔ If no users matched, short-circuit early
       if (matchingUserIds.length === 0) {
         return NextResponse.json({
           success: true,
@@ -274,18 +268,17 @@ export async function GET(request: NextRequest) {
       .limit(limit)
       .lean()
       .exec();
-
-    const bugReports: IBugReport[] = rawReports.map((report) => ({
+    const bugReports: any[] = rawReports.map((report) => ({
+      _id: report._id,
       bugId: report.bugId,
       userId: report.userId,
-      bugDescription: report.bugDescription,
-      attachments: report.attachments?.map((attachment) => ({
-        filename: attachment.filename,
-        contentType: attachment.contentType,
-        size: attachment.size,
-        data: Buffer.from(attachment.data as any),
+      description: report.description,
+      createdAt: report.createdAt,
+      updatedAt: report.updatedAt,
+      attachments: report.attachments?.map((attachment, index) => ({
+      filename: attachment.filename,
+      index
       })) || [],
-      submittedAt: report.submittedAt,
     }));
 
     const enriched = await Promise.all(

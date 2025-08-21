@@ -15,6 +15,10 @@ const Basic: React.FC<BasicProps> = ({ onChange }) => {
     getInputProps,
     isDragActive
   } = useDropzone({
+    accept: {
+      'image/png': ['.png'],
+      'image/jpeg': ['.jpg', '.jpeg'],
+    },
     maxFiles: MAX_FILES,
     maxSize: MAX_FILE_SIZE,
     onDropRejected: (fileRejections) => {
